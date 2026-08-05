@@ -9,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 
 from mcorsi.extensions import db
 from mcorsi.models import Enrollment, ImportBatch, Role, User
+from mcorsi.services.certificates import readiness
 from mcorsi.services.imports import confirm_batch, prepare_batch
 from mcorsi.services.storage import save_upload
 
@@ -82,7 +83,17 @@ def test_forms_history_is_deduplicated_and_imported(app):
         db.session.commit()
         assert batch.status == "completed"
         assert batch.course.status == "completed"
+        assert batch.course.is_historical is True
         assert batch.course.first_session.starts_at.date() == date(2026, 6, 20)
         assert Enrollment.query.count() == 2
         assert all(item.attendance_status == "attended" for item in Enrollment.query.all())
+        assert all(
+            readiness(item)[1] == ["modello attestato non assegnato"]
+            for item in Enrollment.query.all()
+        )
+        batch.course.is_historical = False
+        assert readiness(Enrollment.query.first())[1] == [
+            "questionari non superati",
+            "modello attestato non assegnato",
+        ]
         assert User.query.filter(User.roles.any(name="participant")).count() == 2

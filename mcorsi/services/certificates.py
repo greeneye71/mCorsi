@@ -177,7 +177,10 @@ def readiness(enrollment: Enrollment) -> tuple[bool, list[str]]:
     profile = enrollment.participant.participant_profile
     if not enrollment.participant.profile_completed or not profile:
         reasons.append("anagrafica incompleta")
-    if not course_assessment_complete(enrollment.course, enrollment.participant):
+    if (
+        not enrollment.course.is_historical
+        and not course_assessment_complete(enrollment.course, enrollment.participant)
+    ):
         reasons.append("questionari non superati")
     if not enrollment.course.certificate_template:
         reasons.append("modello attestato non assegnato")

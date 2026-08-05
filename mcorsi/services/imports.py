@@ -237,6 +237,7 @@ def confirm_batch(batch: ImportBatch, *, actor: User) -> ImportBatch:
             "title": batch.course_title,
             "description": f"Corso storico importato da {batch.stored_file.original_name}.",
             "status": "completed",
+            "is_historical": True,
             "referent_user_id": actor.id,
             "session_date": batch.course_date,
             "start_time": time(9, 0),
