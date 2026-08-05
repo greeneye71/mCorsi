@@ -5,8 +5,9 @@ from flask_login import current_user, login_required
 from sqlalchemy import text
 
 from ..extensions import db
-from ..models import AdmissionRequest, Company, Course, User
+from ..models import AdmissionRequest, Company, Course, SystemVersion, User
 from ..services.certificates import converter_status
+from ..version import APP_VERSION, DATABASE_VERSION
 
 
 main_bp = Blueprint("main", __name__)
@@ -14,7 +15,7 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.get("/health/live")
 def health_live():
-    return jsonify(status="ok")
+    return jsonify(status="ok", application_version=APP_VERSION)
 
 
 @main_bp.get("/health/ready")
@@ -25,12 +26,36 @@ def health_ready():
         components["database"] = "ok"
     except Exception:
         components["database"] = "error"
+        db.session.rollback()
+    stored_version = None
+    if components["database"] == "ok":
+        try:
+            stored_version = db.session.get(SystemVersion, 1)
+            if stored_version is None:
+                components["database_schema"] = "migration_required"
+            elif stored_version.database_version != DATABASE_VERSION:
+                components["database_schema"] = "incompatible"
+            else:
+                components["database_schema"] = "ok"
+        except Exception:
+            db.session.rollback()
+            components["database_schema"] = "migration_required"
     storage = Path(current_app.config["PRIVATE_STORAGE_PATH"])
     components["storage"] = "ok" if storage.is_dir() else "error"
     converter_ok, converter_detail = converter_status()
     components["pdf_converter"] = "ok" if converter_ok else converter_detail
-    ready = components["database"] == "ok" and components["storage"] == "ok"
-    return jsonify(status="ok" if ready and converter_ok else "degraded", components=components), (200 if ready else 503)
+    ready = (
+        components["database"] == "ok"
+        and components.get("database_schema") == "ok"
+        and components["storage"] == "ok"
+    )
+    return jsonify(
+        status="ok" if ready and converter_ok else "degraded",
+        application_version=APP_VERSION,
+        required_database_version=DATABASE_VERSION,
+        database_version=stored_version.database_version if stored_version else None,
+        components=components,
+    ), (200 if ready else 503)
 
 
 @main_bp.get("/")

@@ -6,16 +6,31 @@ if (-not $PythonExecutable) {
     $VirtualEnvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
     $PythonExecutable = if (Test-Path -LiteralPath $VirtualEnvPython) { $VirtualEnvPython } else { "python" }
 }
+$EnvironmentNames = @(
+    "MCORSI_ENV",
+    "MCORSI_SECRET_KEY",
+    "MCORSI_ENCRYPTION_KEY",
+    "MCORSI_OTP_PEPPER",
+    "MCORSI_MCP_TOKEN_PEPPER",
+    "MCORSI_MCP_PORT",
+    "MCORSI_MCP_ALLOWED_HOSTS"
+)
+$PreviousEnvironment = @{}
+foreach ($Name in $EnvironmentNames) {
+    $PreviousEnvironment[$Name] = [Environment]::GetEnvironmentVariable($Name, "Process")
+}
 $env:MCORSI_ENV = "production"
+$env:MCORSI_SECRET_KEY = "smoke-test-secret-key-web"
+$env:MCORSI_ENCRYPTION_KEY = "smoke-test-encryption-key"
+$env:MCORSI_OTP_PEPPER = "smoke-test-otp-pepper"
+$env:MCORSI_MCP_TOKEN_PEPPER = "smoke-test-mcp-token-pepper"
+$env:MCORSI_MCP_PORT = "18001"
+$env:MCORSI_MCP_ALLOWED_HOSTS = "127.0.0.1:18001,localhost:18001"
 $WebProcess = $null
 $McpProcess = $null
 Push-Location -LiteralPath $ProjectRoot
 try {
     $WebProcess = Start-Process -FilePath $PythonExecutable -ArgumentList @("-m", "waitress", "--listen=127.0.0.1:18000", "--threads=2", "wsgi:app") -PassThru -WindowStyle Hidden
-    $PreviousMcpPort = $env:MCORSI_MCP_PORT
-    $PreviousMcpHosts = $env:MCORSI_MCP_ALLOWED_HOSTS
-    $env:MCORSI_MCP_PORT = "18001"
-    $env:MCORSI_MCP_ALLOWED_HOSTS = "127.0.0.1:18001,localhost:18001"
     $McpProcess = Start-Process -FilePath $PythonExecutable -ArgumentList @("mcp_server.py") -PassThru -WindowStyle Hidden
 
     $Ready = $false
@@ -40,7 +55,13 @@ try {
 } finally {
     if ($McpProcess -and -not $McpProcess.HasExited) { Stop-Process -Id $McpProcess.Id -Force }
     if ($WebProcess -and -not $WebProcess.HasExited) { Stop-Process -Id $WebProcess.Id -Force }
-    $env:MCORSI_MCP_PORT = $PreviousMcpPort
-    $env:MCORSI_MCP_ALLOWED_HOSTS = $PreviousMcpHosts
+    foreach ($Name in $EnvironmentNames) {
+        $PreviousValue = $PreviousEnvironment[$Name]
+        if ($null -eq $PreviousValue) {
+            Remove-Item -Path "Env:$Name" -ErrorAction SilentlyContinue
+        } else {
+            Set-Item -Path "Env:$Name" -Value $PreviousValue
+        }
+    }
     Pop-Location
 }

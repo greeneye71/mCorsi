@@ -9,6 +9,7 @@ python -m pip install -r requirements.txt
 python -m pytest
 python -m flask --app wsgi db upgrade
 python -m flask --app wsgi db check
+python -m flask --app wsgi version
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ```
 
@@ -24,6 +25,8 @@ ammissione → questionario → presenza → attestato → portale partecipante.
 - impostare una destinazione backup su disco o sistema distinto;
 - installare i processi web, MCP, promemoria e backup;
 - pubblicare i due hostname Cloudflare verso le sole porte localhost;
+- verificare che le porte configurate (predefinite: web 8000, MCP 8001) non
+  siano già occupate;
 - creare un token MCP a privilegi minimi e provarlo dal client previsto;
 - verificare desktop e smartphone reali, in particolare questionario e OTP;
 - registrare informativa privacy, tempi di conservazione e responsabili degli
@@ -34,4 +37,5 @@ ammissione → questionario → presenza → attestato → portale partecipante.
 - ogni giorno: stato servizi, `/health/ready`, coda email e backup creato;
 - ogni mese: scadenze, utenti interni e token MCP attivi;
 - ogni tre mesi: ripristino di prova su una directory/database separati;
-- dopo ogni aggiornamento: backup, migrazioni, test e smoke test.
+- dopo ogni aggiornamento: backup, migrazioni, controllo versione, test e smoke
+  test.

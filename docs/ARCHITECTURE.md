@@ -63,6 +63,21 @@ separato, eseguito sulla stessa macchina.
 La configurazione sensibile non viene committata. La password SMTP sarà cifrata
 con una chiave master fornita dall'ambiente di esecuzione.
 
+## Versionamento e migrazioni
+
+mCorsi usa tre informazioni complementari:
+
+- versione applicativa semantica, attualmente `0.1.0`;
+- versione intera dello schema, attualmente `1`, conservata nella riga unica
+  della tabella `system_version`;
+- revisione Alembic, che identifica esattamente l'ultima migrazione applicata.
+
+Il comando `python -m flask --app wsgi version` riporta i tre valori. Le nuove
+release che modificano lo schema devono incrementare `DATABASE_VERSION` e
+includere una migrazione che aggiorni `system_version`. L'health check
+`/health/ready` non dichiara pronta l'applicazione se lo schema è assente o
+incompatibile, evitando di avviare codice nuovo su un database non aggiornato.
+
 ## MCP
 
 Il processo MCP riusa application factory, servizi e database ma non il server

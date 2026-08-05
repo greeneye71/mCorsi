@@ -30,6 +30,7 @@
     </form>
     <p class="help-text">La password può essere reimpostata dall'amministratore tramite la utility a riga di comando.</p>
     <div class="auth-switch">Sei un partecipante? <a href="{{ url_for('portal.access') }}">Ricevi il codice via email</a><br>Rappresenti un'azienda? <a href="{{ url_for('company_portal.access') }}">Area aziende</a></div>
+    <p class="auth-version">mCorsi v{{ app_version }}</p>
   </div>
 </section>
 {% endblock %}

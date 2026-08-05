@@ -1,14 +1,18 @@
-param([string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")))
+param(
+    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")),
+    [int]$WebPort = 8000,
+    [int]$McpPort = 8001
+)
 $ErrorActionPreference = "Stop"
 $Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path -LiteralPath $Python)) { throw "Ambiente virtuale non trovato: $Python" }
 $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
-$WebAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ProjectRoot\scripts\run-production.ps1`" -PythonExecutable `"$Python`""
+$WebAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ProjectRoot\scripts\run-production.ps1`" -PythonExecutable `"$Python`" -ListenAddress `"127.0.0.1:$WebPort`""
 $AtStartup = New-ScheduledTaskTrigger -AtStartup
 Register-ScheduledTask -TaskName "mCorsi Web" -Action $WebAction -Trigger $AtStartup -User $User -RunLevel Highest -Force
 
-$McpAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ProjectRoot\scripts\run-mcp.ps1`" -PythonExecutable `"$Python`""
+$McpAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ProjectRoot\scripts\run-mcp.ps1`" -PythonExecutable `"$Python`" -Port $McpPort"
 Register-ScheduledTask -TaskName "mCorsi MCP" -Action $McpAction -Trigger $AtStartup -User $User -RunLevel Highest -Force
 
 $ReminderAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$ProjectRoot\scripts\notifications.ps1`" -PythonExecutable `"$Python`""
@@ -19,4 +23,4 @@ $BackupAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-No
 $EveryNight = New-ScheduledTaskTrigger -Daily -At "02:00"
 Register-ScheduledTask -TaskName "mCorsi Backup" -Action $BackupAction -Trigger $EveryNight -User $User -RunLevel Highest -Force
 
-Write-Host "Attività pianificate mCorsi installate per $User."
+Write-Host "Attività pianificate mCorsi installate per $User (web $WebPort, MCP $McpPort)."

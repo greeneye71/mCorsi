@@ -2,11 +2,16 @@
 
 ## Scelta consigliata
 
-mCorsi ascolta esclusivamente su `127.0.0.1:8000` tramite Waitress. Un tunnel
-Cloudflare gestito da remoto pubblica l'hostname HTTPS verso
+mCorsi ascolta per impostazione predefinita su `127.0.0.1:8000` tramite
+Waitress. Un tunnel Cloudflare gestito da remoto pubblica l'hostname HTTPS verso
 `http://localhost:8000`; non occorre aprire porte in ingresso sul router o sul
 firewall. Il database SQLite e lo storage devono risiedere su disco locale; i
 backup devono essere copiati su un secondo disco o destinazione sincronizzata.
+
+Le porte predefinite sono 5100 per test/sviluppo, 8000 per il web di produzione
+e 8001 per MCP. Si modificano con gli argomenti dei launcher o con
+`MCORSI_TEST_PORT`, `MCORSI_WEB_PORT` e `MCORSI_MCP_PORT`. I servizi restano
+vincolati a localhost: cambiare porta non significa esporli direttamente.
 
 ## Preparazione comune
 
@@ -30,6 +35,9 @@ MCORSI_DATABASE_URL=sqlite:////var/lib/mcorsi/mcorsi.sqlite3
 MCORSI_STORAGE_PATH=/var/lib/mcorsi/storage
 MCORSI_BACKUP_PATH=/var/backups/mcorsi
 MCORSI_LIBREOFFICE_PATH=/usr/bin/libreoffice
+MCORSI_WEB_HOST=127.0.0.1
+MCORSI_WEB_PORT=8000
+MCORSI_MCP_PORT=8001
 MCORSI_MCP_PUBLIC_URL=https://mcp.example.it/mcp
 MCORSI_MCP_ALLOWED_HOSTS=mcp.example.it,127.0.0.1:8001,localhost:8001
 ```
@@ -54,14 +62,20 @@ Il comando manuale di produzione è:
 
 ```powershell
 .\scripts\run-production.ps1
+.\scripts\run-production.ps1 -ListenAddress "127.0.0.1:8080"
 ```
 
 Da PowerShell avviato come amministratore si possono registrare web app,
 server MCP, promemoria e backup nell'Utilità di pianificazione:
 
 ```powershell
-.\deploy\windows\install-scheduled-tasks.ps1
+.\deploy\windows\install-scheduled-tasks.ps1 -WebPort 8000 -McpPort 8001
 ```
+
+Per una prova dal Prompt dei comandi, senza usare la porta Flask convenzionale
+5000, eseguire `avvia.cmd test 5100`. Su Linux l'equivalente è
+`sh avvia.sh test 5100`; per produzione si può usare
+`sh avvia.sh produzione 8080`.
 
 L'account selezionato deve avere il diritto di esecuzione all'avvio e accesso
 ai percorsi configurati. Per un server non presidiato è preferibile Linux con
@@ -73,9 +87,9 @@ Cloudflare raccomanda un tunnel gestito da remoto. Nel pannello Cloudflare:
 
 1. aprire **Networking → Tunnels**, creare il tunnel e scegliere il sistema;
 2. aggiungere una route “Published application” per l'hostname desiderato;
-3. usare come Service URL `http://localhost:8000`;
+3. usare come Service URL `http://localhost:8000` (o la porta web scelta);
 4. per MCP aggiungere un secondo hostname, per esempio `mcp.example.it`, con
-   Service URL `http://localhost:8001`;
+   Service URL `http://localhost:8001` (o la porta MCP scelta);
 5. copiare il comando di installazione con token ed eseguirlo come
    amministratore/root:
 
@@ -110,6 +124,7 @@ ripristinare:
 python -m flask --app wsgi backup verify /percorso/backup.mcbackup
 python -m flask --app wsgi backup restore /percorso/backup.mcbackup --server-stopped
 python -m flask --app wsgi db upgrade
+python -m flask --app wsgi version
 ```
 
 Prima della sostituzione il comando crea automaticamente un ulteriore backup
@@ -157,6 +172,13 @@ un'estensione futura. Riferimenti ufficiali: [server MCP OpenAI](https://develop
 ## Aggiornamento
 
 Creare un backup, fermare il servizio, aggiornare codice e dipendenze, eseguire
-`flask db upgrade`, quindi riavviare. Controllare `/health/ready`, la pagina
-degli operatori e la coda email. Non cambiare `MCORSI_ENCRYPTION_KEY` senza
+`flask db upgrade` e `flask version`, quindi riavviare. Controllare
+`/health/ready`, la pagina degli operatori e la coda email. Non cambiare
+`MCORSI_ENCRYPTION_KEY` senza
 reinserire la password SMTP cifrata con la chiave precedente.
+
+La release 0.1.0 richiede la versione database 1. La tabella `system_version`
+registra questa compatibilità, mentre `alembic_version` identifica la migrazione
+esatta. Se i valori non sono allineati, `/health/ready` restituisce HTTP 503 e
+il servizio deve restare fuori dal tunnel finché `flask db upgrade` non termina
+correttamente.

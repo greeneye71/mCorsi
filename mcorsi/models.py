@@ -100,6 +100,17 @@ class AuditLog(db.Model):
     actor = db.relationship("User")
 
 
+class SystemVersion(db.Model):
+    __tablename__ = "system_version"
+
+    id = db.Column(db.Integer, primary_key=True, default=1)
+    application_version = db.Column(db.String(32), nullable=False)
+    database_version = db.Column(db.Integer, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
 class McpAccessToken(db.Model):
     __tablename__ = "mcp_access_tokens"
 

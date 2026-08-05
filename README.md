@@ -1,5 +1,7 @@
 # mCorsi
 
+**Versione applicazione 0.1.0 · versione database 1**
+
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
 l'accesso di amministratori/operatori, anagrafiche di partecipanti e aziende,
@@ -19,6 +21,25 @@ decisioni tecniche in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Avvio su Windows
 
+Dal normale Prompt dei comandi è sufficiente eseguire:
+
+```cmd
+avvia.cmd test
+```
+
+Lo script prepara automaticamente l'ambiente, applica le migrazioni e, solo
+al primo avvio, richiede email e password dell'amministratore. L'ambiente di
+test usa per impostazione predefinita la porta **5100**, così non entra in
+conflitto con altre applicazioni Flask sulla porta 5000. La porta può essere
+indicata come secondo argomento:
+
+```cmd
+avvia.cmd test 5200
+avvia.cmd produzione 8080
+```
+
+In alternativa, la procedura manuale è:
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -29,11 +50,29 @@ python -m flask --app wsgi admin create
 python wsgi.py
 ```
 
-Aprire `http://127.0.0.1:5000`. La password amministrativa viene richiesta in
+Aprire `http://127.0.0.1:5100`. La password amministrativa viene richiesta in
 modo interattivo e non compare negli argomenti né nella cronologia della shell.
 
 Il nuovo database predefinito è `instance/mcorsi-v2.sqlite3`: il file del
 prototipo precedente, se presente, non viene modificato.
+
+## Avvio su Linux
+
+Dal terminale, nella cartella del progetto:
+
+```bash
+sh avvia.sh test
+```
+
+Lo script crea l'ambiente virtuale, installa le dipendenze, aggiorna il database
+e richiede il primo amministratore. Per generare gli attestati occorre inoltre
+installare LibreOffice; su Debian/Ubuntu, se manca il modulo per gli ambienti
+virtuali, installare `python3-venv`. Anche qui la porta di test predefinita è
+5100 e può essere cambiata, per esempio con `sh avvia.sh test 5200`. La modalità
+`produzione` usa Waitress e la porta 8000, salvo diversa indicazione.
+
+Le porte predefinite possono anche essere configurate come variabili d'ambiente
+con `MCORSI_TEST_PORT`, `MCORSI_WEB_PORT` e `MCORSI_MCP_PORT`.
 
 ## Funzioni disponibili
 
@@ -99,9 +138,22 @@ python -m flask --app wsgi admin set-password nome@example.it
 python -m flask --app wsgi admin disable-user nome@example.it
 python -m flask --app wsgi admin list-users
 python -m flask --app wsgi mcp token-list
+python -m flask --app wsgi version
 ```
 
 Le password devono contenere almeno 12 caratteri.
+
+## Versioni e migrazioni
+
+La versione dell'applicazione è definita nel codice e mostrata discretamente
+nella pagina di accesso. La versione numerica dello schema è memorizzata anche
+nel database, nella tabella `system_version`; Alembic conserva inoltre la
+revisione esatta delle migrazioni applicate. Il comando `flask version` mostra
+tutti e tre i valori e segnala eventuali incompatibilità.
+
+Ogni futura modifica allo schema deve includere una migrazione Alembic e
+l'incremento di `DATABASE_VERSION`. L'endpoint `/health/ready` restituisce 503
+se la versione del database non coincide con quella richiesta dal codice.
 
 ## Backup
 

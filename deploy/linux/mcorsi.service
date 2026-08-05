@@ -9,7 +9,7 @@ User=mcorsi
 Group=mcorsi
 WorkingDirectory=/opt/mcorsi
 EnvironmentFile=/etc/mcorsi/mcorsi.env
-ExecStart=/opt/mcorsi/.venv/bin/python -m waitress --listen=127.0.0.1:8000 --threads=4 wsgi:app
+ExecStart=/opt/mcorsi/scripts/run-production.sh
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

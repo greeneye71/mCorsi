@@ -10,6 +10,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from .cli import register_commands
 from .config import CONFIGS
 from .extensions import csrf, db, login_manager, migrate
+from .version import APP_VERSION, DATABASE_VERSION
 
 
 def create_app(config_name: str = "development", test_config: dict | None = None) -> Flask:
@@ -109,6 +110,8 @@ def create_app(config_name: str = "development", test_config: dict | None = None
                 "attended": "Presente",
                 "absent": "Assente",
             },
+            "app_version": APP_VERSION,
+            "required_database_version": DATABASE_VERSION,
         }
 
     @app.errorhandler(403)

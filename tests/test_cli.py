@@ -43,3 +43,20 @@ def test_short_password_is_reprompted(runner):
     )
     assert result.exit_code == 0, result.output
     assert "almeno 12 caratteri" in result.output
+
+
+def test_bootstrap_admin_is_idempotent(app, runner):
+    first = runner.invoke(
+        args=["admin", "bootstrap", "--email", "bootstrap@example.it"],
+        input="PasswordBootstrap1!\nPasswordBootstrap1!\n",
+    )
+    assert first.exit_code == 0, first.output
+    assert "Amministratore creato" in first.output
+
+    second = runner.invoke(args=["admin", "bootstrap"])
+    assert second.exit_code == 0, second.output
+    assert "già configurato" in second.output
+
+    with app.app_context():
+        admins = User.query.filter(User.roles.any(name="admin")).all()
+        assert len(admins) == 1

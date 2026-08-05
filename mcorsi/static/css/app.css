@@ -61,6 +61,7 @@ p { margin: 0; }
 .help-text { margin-top: 1.2rem; color: var(--muted); font-size: .83rem; }
 .auth-switch { margin-top: 1.3rem; padding-top: 1.1rem; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .88rem; }
 .auth-switch a { font-weight: 700; }
+.auth-version { margin-top: .9rem; color: #8b9a97; text-align: center; font-size: .7rem; letter-spacing: .04em; }
 .messages { display: grid; gap: .6rem; margin-bottom: 1.5rem; }
 .message { padding: .8rem 1rem; border-radius: .7rem; background: #fff; border-left: 4px solid var(--brand); box-shadow: 0 5px 20px rgba(23,48,45,.06); }
 .message-error { border-color: var(--danger); }

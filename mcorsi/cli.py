@@ -17,6 +17,7 @@ from .services.audit import record_event
 from .services.backup import create_backup, restore_backup, verify_backup
 from .services.mcp_access import MCP_SCOPES, create_access_token
 from .services.notifications import deliver_pending, enqueue_reminders
+from .services.versioning import ensure_system_version, version_information
 
 
 ROLE_NAMES = ("admin", "operator", "participant", "company_contact", "service")
@@ -39,6 +40,7 @@ def ensure_roles() -> dict[str, Role]:
             db.session.add(role)
         roles[name] = role
     db.session.flush()
+    ensure_system_version()
     return roles
 
 
@@ -48,6 +50,27 @@ def register_commands(app: Flask) -> None:
     app.cli.add_command(backup_group)
     app.cli.add_command(notifications_group)
     app.cli.add_command(mcp_group)
+    app.cli.add_command(version_command)
+
+
+@click.command("version")
+@with_appcontext
+def version_command() -> None:
+    """Mostra versioni dell'applicazione, del database e di Alembic."""
+    try:
+        information = version_information()
+    except Exception as exc:
+        db.session.rollback()
+        raise click.ClickException(
+            "Metadati di versione non disponibili: esegui prima flask db upgrade."
+        ) from exc
+    click.echo(f"mCorsi {information['application_version']}")
+    click.echo(
+        f"Database {information['database_version']} "
+        f"(richiesto {information['required_database_version']})"
+    )
+    click.echo(f"Alembic {information['alembic_revision'] or 'non inizializzato'}")
+    click.echo("Compatibilità: " + ("ok" if information["compatible"] else "migrazione richiesta"))
 
 
 @click.command("init-db")
@@ -97,6 +120,22 @@ def create_admin(email: str) -> None:
     """Crea un amministratore con ruolo operatore incluso."""
     password = _prompt_password()
     user = _create_staff(email, "admin", password)
+    click.echo(f"Amministratore creato: {user.email}")
+
+
+@admin_group.command("bootstrap")
+@click.option("--email", default=None, help="Email del primo amministratore.")
+@with_appcontext
+def bootstrap_admin(email: str | None) -> None:
+    """Crea il primo amministratore solo quando non ne esiste già uno."""
+    ensure_roles()
+    existing = User.query.filter(User.roles.any(name="admin")).first()
+    if existing is not None:
+        click.echo(f"Amministratore già configurato: {existing.email}")
+        return
+    selected_email = email or click.prompt("Email del primo amministratore")
+    password = _prompt_password()
+    user = _create_staff(selected_email, "admin", password)
     click.echo(f"Amministratore creato: {user.email}")
 
 
