@@ -19,6 +19,17 @@ def test_dashboard_requires_login(client):
     assert "/auth/login" in response.headers["Location"]
 
 
+def test_login_is_the_shared_entry_point_for_all_audiences(client):
+    response = client.get("/auth/login")
+    assert response.status_code == 200
+    assert b"Corsi, questionari e attestati in un unico posto" in response.data
+    assert b"Partecipanti" in response.data
+    assert b"Aziende" in response.data
+    assert b"Accedi con password" in response.data
+    assert b'href="/participant/access"' in response.data
+    assert b'href="/company/access"' in response.data
+
+
 def test_operator_can_login(app, client):
     _staff(app, role="operator")
     response = client.post(

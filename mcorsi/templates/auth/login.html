@@ -1,15 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Accesso operatori · mCorsi{% endblock %}
+{% block title %}Accesso · mCorsi{% endblock %}
 {% block content %}
-<section class="auth-layout">
+<section class="auth-layout auth-home-layout">
   <div class="auth-intro">
-    <p class="eyebrow">mCorsi</p>
-    <h1>Gestione corsi e attestati</h1>
-    <p class="lead">Portale operativo per amministratori e operatori.</p>
+    <p class="eyebrow">Portale della formazione</p>
+    <h1>Corsi, questionari e attestati in un unico posto.</h1>
+    <p class="lead">Scegli la tua area. Partecipanti e aziende accedono con un codice temporaneo inviato via email, senza password.</p>
+    <div class="audience-access" aria-label="Aree di accesso">
+      <a class="audience-card" href="{{ url_for('portal.access') }}">
+        <span class="audience-icon" aria-hidden="true">P</span>
+        <span><strong>Partecipanti</strong><small>Corsi, questionari e attestati personali</small></span>
+        <span class="audience-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="audience-card" href="{{ url_for('company_portal.access') }}">
+        <span class="audience-icon" aria-hidden="true">A</span>
+        <span><strong>Aziende</strong><small>Attestati dei propri dipendenti</small></span>
+        <span class="audience-arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+    <div class="feature-row" aria-label="Caratteristiche principali"><span>Mobile</span><span>Accesso sicuro</span><span>Dati riservati</span></div>
   </div>
   <div class="panel auth-panel">
     <p class="eyebrow">Area operatori</p>
-    <h2>Accedi</h2>
+    <h2>Accedi con password</h2>
+    <p class="operator-login-note">Per amministratori e operatori che gestiscono i corsi.</p>
     <form method="post" novalidate>
       {{ form.hidden_tag() }}
       <div class="field">
@@ -25,8 +39,8 @@
       <label class="check-row">{{ form.remember() }} <span>Resta connesso su questo dispositivo</span></label>
       {{ form.submit(class="button button-primary button-full") }}
     </form>
-    <p class="help-text">La password può essere reimpostata dall'amministratore tramite la utility a riga di comando.</p>
-    <div class="auth-switch">Sei un partecipante? <a href="{{ url_for('portal.access') }}">Ricevi il codice via email</a><br>Rappresenti un'azienda? <a href="{{ url_for('company_portal.access') }}">Area aziende</a></div>
+    <p class="help-text">Se non ricordi la password, contatta l'amministratore dell'applicazione.</p>
+    <div class="auth-switch">Non sei un operatore? <a href="{{ url_for('portal.access') }}">Area partecipanti</a> · <a href="{{ url_for('company_portal.access') }}">Area aziende</a></div>
     <p class="auth-version">mCorsi v{{ app_version }}</p>
   </div>
 </section>

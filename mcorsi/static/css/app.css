@@ -44,6 +44,15 @@ p { margin: 0; }
 .auth-intro { padding: 2rem 0; }
 .auth-panel { max-width: 28rem; width: 100%; justify-self: end; }
 .auth-panel h2 { margin-bottom: 1.2rem; }
+.operator-login-note { margin: -.7rem 0 1.2rem; color: var(--muted); font-size: .83rem; }
+.audience-access { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; max-width: 43rem; margin-top: 1.5rem; }
+.audience-card { display: grid; grid-template-columns: 2.2rem 1fr auto; align-items: center; gap: .75rem; min-height: 5.2rem; padding: .8rem; border: 1px solid var(--line); border-radius: .7rem; color: var(--ink); background: rgba(255,255,255,.82); text-decoration: none; box-shadow: 0 2px 8px rgba(22,40,68,.04); }
+.audience-card:hover, .audience-card:focus-visible { border-color: #9fc1e2; background: #fff; box-shadow: var(--shadow); outline: none; }
+.audience-icon { width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: .55rem; color: #fff; background: var(--brand); font-weight: 800; }
+.audience-card strong, .audience-card small { display: block; }
+.audience-card strong { font-size: .9rem; }
+.audience-card small { margin-top: .18rem; color: var(--muted); font-size: .72rem; line-height: 1.3; }
+.audience-arrow { color: var(--brand); font-size: 1.2rem; }
 .feature-row { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 2rem; }
 .feature-row span, .status-pill { padding: .45rem .75rem; border: 1px solid #bed8cf; border-radius: 999px; color: var(--brand-dark); background: rgba(255,255,255,.7); font-weight: 650; font-size: .8rem; }
 .field { margin-bottom: .9rem; }
@@ -319,6 +328,7 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
   .auth-layout { gap: 1.25rem; }
   .auth-intro { padding: 1rem 0 0; }
   .auth-panel { justify-self: stretch; max-width: none; }
+  .auth-home-layout { align-items: start; }
   .feature-row { margin-top: 1.3rem; }
   .hero { display: grid; }
   .stats-grid { grid-template-columns: 1fr; }
@@ -373,3 +383,8 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
 }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+@media (max-width: 560px) {
+  .audience-access { grid-template-columns: 1fr; }
+  .auth-home-layout .auth-intro { padding-top: .4rem; }
+}

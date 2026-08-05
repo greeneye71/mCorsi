@@ -1,7 +1,7 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.3.1
+Versione applicazione: 0.3.2
 Versione database: 1
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
@@ -333,6 +333,7 @@ come evoluzione; la prima release è server-to-server.
 Interfaccia Flask/Jinja mobile-first con CSS locale, HTMX e piccoli componenti
 Alpine.js dove utili. Nessuna dipendenza obbligatoria da CDN in produzione.
 
+- pagina iniziale comune con accessi evidenti per operatori, partecipanti e aziende;
 - navigazione laterale desktop e compatta mobile;
 - dashboard diverse per ruolo;
 - procedure guidate per onboarding, corso, questionario e importazione;
