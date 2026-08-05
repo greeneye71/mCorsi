@@ -57,6 +57,10 @@ sudo systemctl enable --now mcorsi-notifications.timer mcorsi-backup.timer
 systemctl status mcorsi.service mcorsi-mcp.service
 ```
 
+`mcorsi.service` usa `scripts/run-production.sh`, che esegue `flask init-db`
+prima di avviare Waitress. Se una migrazione fallisce il server web non viene
+messo in ascolto e systemd registra l'errore nel journal.
+
 ## Windows
 
 Il comando manuale di produzione è:
@@ -193,13 +197,14 @@ un'estensione futura. Riferimenti ufficiali: [server MCP OpenAI](https://develop
 
 ## Aggiornamento
 
-Creare un backup, fermare il servizio, aggiornare codice e dipendenze, eseguire
-`flask db upgrade` e `flask version`, quindi riavviare. Controllare
+Creare un backup, fermare il servizio, aggiornare codice e dipendenze, quindi
+riavviare. Gli script di produzione applicano automaticamente `flask init-db`
+prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza
 reinserire la password SMTP cifrata con la chiave precedente.
 
-La release 0.5.0 richiede la versione database 3. La migrazione identifica i
+La release 0.5.1 richiede la versione database 3. La migrazione identifica i
 corsi storici e aggiorna anche quelli già importati, consentendo l'emissione
 degli attestati senza questionari pregressi. La tabella `system_version`
 registra questa compatibilità, mentre `alembic_version` identifica la migrazione
