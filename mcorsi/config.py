@@ -39,7 +39,7 @@ class BaseConfig:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = "Lax"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
-    WTF_CSRF_TIME_LIMIT = timedelta(hours=2)
+    WTF_CSRF_TIME_LIMIT = 2 * 60 * 60
     TRUST_PROXY_HEADERS = False
     OTP_EXPIRY_MINUTES = 10
     OTP_MAX_ATTEMPTS = 5

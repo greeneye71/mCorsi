@@ -1,3 +1,5 @@
+import re
+
 from mcorsi.extensions import db
 from mcorsi.models import Role, User
 
@@ -26,6 +28,28 @@ def test_operator_can_login(app, client):
     )
     assert response.status_code == 200
     assert b"BENTORNATO" in response.data.upper()
+
+
+def test_operator_can_login_with_csrf_enabled_from_lan(app, client):
+    app.config["WTF_CSRF_ENABLED"] = True
+    _staff(app)
+    base_url = "http://192.0.2.10:5100"
+    login_page = client.get("/auth/login", base_url=base_url)
+    match = re.search(rb'name="csrf_token"[^>]*value="([^"]+)"', login_page.data)
+    assert match is not None
+
+    response = client.post(
+        "/auth/login",
+        base_url=base_url,
+        environ_overrides={"REMOTE_ADDR": "192.0.2.20"},
+        data={
+            "email": "admin@example.it",
+            "password": "UnaPasswordSicura!",
+            "csrf_token": match.group(1).decode(),
+        },
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
 
 
 def test_participant_cannot_use_password_login(app, client):
