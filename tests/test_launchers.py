@@ -32,3 +32,10 @@ def test_development_and_production_share_the_same_default_web_port():
     )
     assert "MCORSI_TEST_PORT" not in combined
     assert "MCORSI_TEST_HOST" not in combined
+
+
+def test_production_launchers_migrate_before_starting_waitress():
+    for relative_path in ("scripts/run-production.sh", "scripts/run-production.ps1"):
+        launcher = _read(relative_path)
+        assert "flask --app wsgi init-db" in launcher
+        assert launcher.index("flask --app wsgi init-db") < launcher.index("waitress")
