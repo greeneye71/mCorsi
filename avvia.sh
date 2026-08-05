@@ -15,14 +15,12 @@ case "$mode" in
 esac
 
 if [ "$mode" = "produzione" ]; then
-    port=${2:-${MCORSI_WEB_PORT:-8000}}
-    host=${3:-${MCORSI_WEB_HOST:-0.0.0.0}}
     export MCORSI_ENV=production
 else
-    port=${2:-${MCORSI_TEST_PORT:-5100}}
-    host=${3:-${MCORSI_TEST_HOST:-0.0.0.0}}
     export MCORSI_ENV=development
 fi
+port=${2:-${MCORSI_WEB_PORT:-5100}}
+host=${3:-${MCORSI_WEB_HOST:-0.0.0.0}}
 case "$port" in
     ''|*[!0-9]*)
         printf 'ERRORE: la porta deve essere un numero, per esempio 5100.\n' >&2

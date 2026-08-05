@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.3.0 · versione database 1**
+**Versione applicazione 0.3.1 · versione database 1**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -81,11 +81,11 @@ e richiede il primo amministratore. Per generare gli attestati occorre inoltre
 installare LibreOffice; su Debian/Ubuntu, se manca il modulo per gli ambienti
 virtuali, installare `python3-venv`. Anche qui la porta di test predefinita è
 5100 e può essere cambiata, per esempio con `sh avvia.sh test 5200`. La modalità
-`produzione` usa Waitress e la porta 8000, salvo diversa indicazione.
+`produzione` usa Waitress ma mantiene la stessa porta predefinita 5100.
 
-Indirizzi e porte predefiniti possono anche essere configurati come variabili
-d'ambiente con `MCORSI_TEST_HOST`, `MCORSI_TEST_PORT`, `MCORSI_WEB_HOST`,
-`MCORSI_WEB_PORT` e `MCORSI_MCP_PORT`.
+Indirizzo e porta web sono unici per entrambe le modalità e possono essere
+configurati con `MCORSI_WEB_HOST` e `MCORSI_WEB_PORT`. `MCORSI_MCP_PORT`
+configura invece il processo MCP separato.
 
 L'accesso diretto dalla LAN in modalità `test` usa HTTP non cifrato: va impiegato
 soltanto su una rete privata fidata. La modalità `produzione` mantiene i cookie

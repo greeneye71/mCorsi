@@ -10,17 +10,14 @@ if /I "%MODALITA%"=="production" set "MODALITA=produzione"
 if /I not "%MODALITA%"=="test" if /I not "%MODALITA%"=="produzione" goto :uso
 
 set "PORTA=%~2"
-if "%PORTA%"=="" if /I "%MODALITA%"=="test" set "PORTA=%MCORSI_TEST_PORT%"
-if "%PORTA%"=="" if /I "%MODALITA%"=="produzione" set "PORTA=%MCORSI_WEB_PORT%"
-if "%PORTA%"=="" if /I "%MODALITA%"=="test" set "PORTA=5100"
-if "%PORTA%"=="" if /I "%MODALITA%"=="produzione" set "PORTA=8000"
+if "%PORTA%"=="" set "PORTA=%MCORSI_WEB_PORT%"
+if "%PORTA%"=="" set "PORTA=5100"
 for /f "delims=0123456789" %%A in ("%PORTA%") do goto :porta_non_valida
 if %PORTA% LSS 1 goto :porta_non_valida
 if %PORTA% GTR 65535 goto :porta_non_valida
 
 set "INDIRIZZO=%~3"
-if "%INDIRIZZO%"=="" if /I "%MODALITA%"=="test" set "INDIRIZZO=%MCORSI_TEST_HOST%"
-if "%INDIRIZZO%"=="" if /I "%MODALITA%"=="produzione" set "INDIRIZZO=%MCORSI_WEB_HOST%"
+if "%INDIRIZZO%"=="" set "INDIRIZZO=%MCORSI_WEB_HOST%"
 if "%INDIRIZZO%"=="" set "INDIRIZZO=0.0.0.0"
 
 echo.
@@ -89,7 +86,7 @@ goto :fine
 echo Uso: avvia.cmd [test^|produzione] [porta] [indirizzo]
 echo Esempi:
 echo   avvia.cmd test 5100
-echo   avvia.cmd produzione 8000 0.0.0.0
+echo   avvia.cmd produzione 5100 0.0.0.0
 exit /b 2
 
 :porta_non_valida

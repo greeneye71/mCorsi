@@ -1,7 +1,7 @@
 param(
     [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")),
     [string]$WebHost = "0.0.0.0",
-    [int]$WebPort = 8000,
+    [int]$WebPort = 5100,
     [int]$McpPort = 8001
 )
 $ErrorActionPreference = "Stop"

@@ -11,7 +11,7 @@ if (-not $PythonExecutable) {
 }
 if (-not $ListenAddress) {
     $WebHost = if ($env:MCORSI_WEB_HOST) { $env:MCORSI_WEB_HOST } else { "0.0.0.0" }
-    $WebPort = if ($env:MCORSI_WEB_PORT) { $env:MCORSI_WEB_PORT } else { "8000" }
+    $WebPort = if ($env:MCORSI_WEB_PORT) { $env:MCORSI_WEB_PORT } else { "5100" }
     $ListenAddress = "${WebHost}:${WebPort}"
 }
 $env:MCORSI_ENV = "production"

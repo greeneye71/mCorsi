@@ -27,7 +27,7 @@ ammissione → questionario → presenza → attestato → portale partecipante.
 - pubblicare gli hostname Cloudflare verso le porte web e MCP previste;
 - limitare la regola firewall web al profilo/rete privata e non configurare
   inoltri di porta sul router;
-- verificare che le porte configurate (predefinite: web 8000, MCP 8001) non
+- verificare che le porte configurate (predefinite: web 5100, MCP 8001) non
   siano già occupate;
 - creare un token MCP a privilegi minimi e provarlo dal client previsto;
 - verificare desktop e smartphone reali, in particolare questionario e OTP;
