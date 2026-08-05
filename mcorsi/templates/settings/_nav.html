@@ -3,4 +3,5 @@
   <a class="{{ 'is-active' if request.endpoint == 'settings.staff' else '' }}" href="{{ url_for('settings.staff') }}">Utenti</a>
   <a class="{{ 'is-active' if request.endpoint == 'settings.smtp' else '' }}" href="{{ url_for('settings.smtp') }}">Email SMTP</a>
   <a class="{{ 'is-active' if request.endpoint == 'settings.notifications' else '' }}" href="{{ url_for('settings.notifications') }}">Promemoria</a>
+  <span class="settings-version">mCorsi v{{ app_version }} · Database {{ required_database_version }}</span>
 </nav>

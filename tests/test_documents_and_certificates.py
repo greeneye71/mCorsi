@@ -64,6 +64,8 @@ def test_default_docx_has_required_placeholders_and_geometry():
     variables = inspect_template(path)
     assert "participant_full_name" in variables
     assert "course_title" in variables
+    assert "course_legal_references" in variables
+    assert "course_topics" in variables
     assert "signature_image" in variables
     document = Document(path)
     section = document.sections[0]
@@ -123,6 +125,8 @@ def test_generates_immutable_pdf_when_requirements_are_met(app, monkeypatch):
             data={
                 "title": "Radioprotezione",
                 "description": "",
+                "legal_references": "D.Lgs. 101/2020",
+                "topics": "Radioprotezione dei lavoratori e uso del dosimetro",
                 "status": "completed",
                 "referent_user_id": admin.id,
                 "session_date": date(2026, 3, 15),
@@ -174,6 +178,8 @@ def test_generates_immutable_pdf_when_requirements_are_met(app, monkeypatch):
         assert certificate.certificate_number.startswith("MC-2026-")
         assert certificate.expires_at == date(2031, 3, 15)
         assert certificate.data_snapshot["participant_full_name"] == "Mario Rossi"
+        assert certificate.data_snapshot["course_legal_references"] == "D.Lgs. 101/2020"
+        assert certificate.data_snapshot["course_topics"].startswith("Radioprotezione")
         assert path_for(certificate.pdf_file).read_bytes().startswith(b"%PDF")
 
 

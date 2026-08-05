@@ -1,8 +1,8 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.3.2
-Versione database: 1
+Versione applicazione: 0.4.0
+Versione database: 2
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
 
@@ -150,7 +150,7 @@ momento dell'emissione.
 
 Ogni corso/edizione comprende:
 
-- titolo e descrizione;
+- titolo, descrizione, riferimenti legislativi e argomenti trattati;
 - codice univoco non prevedibile;
 - creatore e referente;
 - stato: bozza, aperto, in corso, concluso, annullato, archiviato;
@@ -170,7 +170,7 @@ modifiche rilevanti sono registrate nell'audit log.
 
 La duplicazione crea una nuova edizione in bozza e copia:
 
-- dati generali, referente modificabile e validità;
+- dati generali, riferimenti legislativi, argomenti, referente modificabile e validità;
 - documenti tramite riferimenti a file immutabili;
 - questionari come nuove versioni indipendenti;
 - modello attestato e firmatario.
@@ -230,6 +230,7 @@ Ogni attestato contiene o registra:
 
 - identificativo e numero univoci;
 - corso, partecipante, azienda e firmatario come snapshot;
+- riferimenti legislativi e argomenti trattati come snapshot;
 - data di emissione e scadenza calcolata dalla fine del corso;
 - versione del modello;
 - hash SHA-256 del PDF;

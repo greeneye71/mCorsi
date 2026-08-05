@@ -37,6 +37,8 @@ def _course_payload(referent_id: str, *, title="Radioprotezione", day="2026-09-2
     return {
         "title": title,
         "description": "Corso di aggiornamento professionale",
+        "legal_references": "D.Lgs. 81/2008\nAccordo Stato-Regioni vigente",
+        "topics": "Principi di prevenzione\nUso dei dispositivi di protezione",
         "status": "open",
         "referent_user_id": referent_id,
         "session_date": day,
@@ -96,6 +98,13 @@ def test_full_operator_flow_and_clean_duplication(app, client):
         original_code = course.code
         assert len(original_code) == 10
         assert course.certificate_validity_months == 60
+        assert "D.Lgs. 81/2008" in course.legal_references
+        assert "Principi di prevenzione" in course.topics
+
+    detail = client.get(f"/courses/{course_id}")
+    assert detail.status_code == 200
+    assert b"Riferimenti legislativi" in detail.data
+    assert b"Principi di prevenzione" in detail.data
 
     requested = client.post(
         f"/courses/{course_id}/admissions", data={"email": "partecipante@example.it"}
@@ -129,6 +138,8 @@ def test_full_operator_flow_and_clean_duplication(app, client):
         assert duplicate.code != original_code
         assert duplicate.status == "draft"
         assert duplicate.title == courses[0].title
+        assert duplicate.legal_references == courses[0].legal_references
+        assert duplicate.topics == courses[0].topics
         assert duplicate.admission_requests == []
         assert duplicate.enrollments == []
 

@@ -321,6 +321,8 @@ class Course(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
     title = db.Column(db.String(240), nullable=False, index=True)
     description = db.Column(db.Text, nullable=False, default="")
+    legal_references = db.Column(db.Text, nullable=False, default="")
+    topics = db.Column(db.Text, nullable=False, default="")
     code = db.Column(db.String(16), unique=True, nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     creator_user_id = db.Column(

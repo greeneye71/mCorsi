@@ -6,6 +6,11 @@
   <div class="action-row"><a class="button button-quiet" href="{{ url_for('courses.duplicate', course_id=course.id) }}">Duplica</a><a class="button button-primary" href="{{ url_for('courses.edit', course_id=course.id) }}">Modifica</a></div>
 </section>
 
+<section class="course-program-grid spaced-panel">
+  <article class="panel"><p class="eyebrow">Programma</p><h2>Argomenti trattati</h2><p class="course-long-text">{{ course.topics or 'Non ancora indicati.' }}</p></article>
+  <article class="panel"><p class="eyebrow">Normativa</p><h2>Riferimenti legislativi</h2><p class="course-long-text">{{ course.legal_references or 'Non ancora indicati.' }}</p></article>
+</section>
+
 <section class="content-grid spaced-panel">
   <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Materiale didattico</p><h2>Documenti del corso</h2></div></div>
     <form class="inline-form" method="post" action="{{ url_for('documents.upload_course_document', course_id=course.id) }}" enctype="multipart/form-data">{{ course_document_form.hidden_tag() }}<div class="field grow-field">{{ course_document_form.label.label }}{{ course_document_form.label(placeholder='es. Dispensa') }}</div><div class="field grow-field">{{ course_document_form.file.label }}{{ course_document_form.file() }}</div>{{ course_document_form.submit(class='button button-primary') }}</form>

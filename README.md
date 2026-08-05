@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.3.2 · versione database 1**
+**Versione applicazione 0.4.0 · versione database 2**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -95,6 +95,7 @@ proxy TLS; non aprire la porta web sul router.
 ## Funzioni disponibili
 
 - creazione e modifica dei corsi da parte di tutti gli operatori;
+- riferimenti legislativi e programma trattato, riportabili negli attestati;
 - seduta singola con modello dati predisposto per più sedute;
 - duplicazione in bozza con nuovo codice e senza partecipanti o risultati;
 - anagrafiche partecipanti e storico dell'azienda di appartenenza;
@@ -105,6 +106,7 @@ proxy TLS; non aprire la porta web sul router.
 - pagina iniziale comune con accessi distinti per operatori, partecipanti e aziende;
 - completamento autonomo del profilo e dell'azienda;
 - configurazione SMTP amministrativa con password cifrata;
+- versione applicazione e database visibile nella pagina di configurazione;
 - nomi visualizzati per operatori e amministratori, distinti dalla mail di accesso;
 - builder per questionari a scelta singola o multipla;
 - archivio generale dei questionari con filtri, anteprima e duplicazione;
@@ -143,6 +145,19 @@ partecipanti. Un questionario importato o duplicato è sempre una nuova bozza
 indipendente e deve essere controllato prima della pubblicazione. Il limite di
 caricamento del JSON è 1 MB; il formato corrente è `mcorsi.questionnaire`,
 versione `1`.
+
+## Attestati e contenuti del corso
+
+Nella scheda del corso, oltre alla descrizione generale, sono disponibili i
+campi **Riferimenti legislativi** e **Argomenti trattati**. Entrambi vengono
+copiati quando si crea una nuova edizione e conservati nello snapshot
+immutabile dell'attestato.
+
+Il modello DOCX standard li riporta automaticamente. Nei modelli personalizzati
+si possono inserire i segnaposto `{{ course_legal_references }}` e
+`{{ course_topics }}`. I modelli caricati in precedenza restano immutati e
+devono essere aggiornati e ricaricati se si desidera visualizzare i nuovi campi
+nel PDF.
 
 ## Configurazione email e OTP
 

@@ -11,6 +11,8 @@
       <div class="field">{{ form.status.label }}{{ form.status() }}</div>
       <div class="field">{{ form.referent_user_id.label }}{{ form.referent_user_id() }}</div>
       <div class="field field-wide">{{ form.description.label }}{{ form.description(rows=5) }}</div>
+      <div class="field field-wide">{{ form.legal_references.label }}{{ form.legal_references(rows=4, placeholder="es. D.Lgs. 81/2008; accordi Stato-Regioni applicabili") }}<p class="field-hint">Norme, decreti e linee guida pertinenti al corso. Possono essere riportati nell'attestato.</p>{% for error in form.legal_references.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field field-wide">{{ form.topics.label }}{{ form.topics(rows=6, placeholder="Elenca il programma e i principali contenuti formativi") }}<p class="field-hint">Programma effettivamente trattato, destinato anche all'attestato.</p>{% for error in form.topics.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
     </div>
   </div>
   <div class="form-section">

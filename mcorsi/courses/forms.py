@@ -34,6 +34,10 @@ DELIVERY_MODE_CHOICES = [
 class CourseForm(FlaskForm):
     title = StringField("Titolo", validators=[DataRequired(), Length(max=240)])
     description = TextAreaField("Descrizione", validators=[Optional(), Length(max=10000)])
+    legal_references = TextAreaField(
+        "Riferimenti legislativi", validators=[Optional(), Length(max=10000)]
+    )
+    topics = TextAreaField("Argomenti trattati", validators=[Optional(), Length(max=20000)])
     status = SelectField("Stato", choices=COURSE_STATUS_CHOICES, validators=[DataRequired()])
     referent_user_id = SelectField("Referente", validators=[DataRequired()])
     session_date = DateField("Data", validators=[DataRequired()], default=date.today)

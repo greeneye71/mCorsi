@@ -40,6 +40,8 @@ def _course_form_data(form: CourseForm) -> dict:
     return {
         "title": form.title.data,
         "description": form.description.data or "",
+        "legal_references": form.legal_references.data or "",
+        "topics": form.topics.data or "",
         "status": form.status.data,
         "referent_user_id": form.referent_user_id.data,
         "session_date": form.session_date.data,

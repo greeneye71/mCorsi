@@ -2,6 +2,7 @@ import re
 
 from mcorsi.extensions import db
 from mcorsi.models import Role, User
+from mcorsi.version import APP_VERSION, DATABASE_VERSION
 
 
 def _staff(app, *, email="admin@example.it", password="UnaPasswordSicura1!", role="admin"):
@@ -100,6 +101,8 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
     assert configuration.status_code == 200
     assert b"Email SMTP" in configuration.data
     assert b'/settings/smtp' in configuration.data
+    assert f"v{APP_VERSION}".encode() in configuration.data
+    assert f"Database {DATABASE_VERSION}".encode() in configuration.data
     created = client.post(
         "/settings/staff",
         data={

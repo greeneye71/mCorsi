@@ -82,6 +82,8 @@ def get_course_data(course_code: str) -> dict:
         "code": course.code,
         "title": course.title,
         "description": course.description,
+        "legal_references": course.legal_references,
+        "topics": course.topics,
         "status": course.status,
         "delivery_mode": course.delivery_mode,
         "referent": {"name": course.referent.display_name, "email": course.referent.email},

@@ -61,6 +61,8 @@ def create_course(*, actor: User, data: dict) -> Course:
     course = Course(
         title=data["title"].strip(),
         description=data.get("description", "").strip(),
+        legal_references=data.get("legal_references", "").strip(),
+        topics=data.get("topics", "").strip(),
         code=generate_course_code(),
         status=data["status"],
         creator_user_id=actor.id,
@@ -86,6 +88,8 @@ def update_course(course: Course, *, actor: User, data: dict) -> Course:
     before = {"title": course.title, "status": course.status, "referent": course.referent_user_id}
     course.title = data["title"].strip()
     course.description = data.get("description", "").strip()
+    course.legal_references = data.get("legal_references", "").strip()
+    course.topics = data.get("topics", "").strip()
     course.status = data["status"]
     course.referent_user_id = data["referent_user_id"]
     course.delivery_mode = data["delivery_mode"]
@@ -106,6 +110,8 @@ def duplicate_course(source: Course, *, actor: User, referent_user_id: str, day,
     duplicate = Course(
         title=source.title,
         description=source.description,
+        legal_references=source.legal_references,
+        topics=source.topics,
         code=generate_course_code(),
         status="draft",
         creator_user_id=actor.id,
