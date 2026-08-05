@@ -1,12 +1,23 @@
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+import json
+from io import BytesIO
+
+from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user
+from werkzeug.utils import secure_filename
 
 from ..extensions import db
-from ..models import Question, Questionnaire, QuestionnaireAttempt
+from ..models import Course, Question, Questionnaire, QuestionnaireAttempt
 from ..services.audit import record_event
 from ..services.permissions import participant_required, staff_required
+from ..services.questionnaire_transfer import (
+    QuestionnaireTransferError,
+    duplicate_questionnaire,
+    import_questionnaire,
+    questionnaire_to_dict,
+    questionnaire_to_markdown,
+)
 from ..services.questionnaires import (
     QuestionnaireError,
     ensure_draft_editable,
@@ -18,7 +29,15 @@ from ..services.questionnaires import (
     unpublish_questionnaire,
     validation_errors,
 )
-from .forms import AttemptSubmissionForm, EmptyForm, QuestionForm, QuestionnaireForm
+from .forms import (
+    AttemptSubmissionForm,
+    EmptyForm,
+    QuestionForm,
+    QuestionnaireCourseForm,
+    QuestionnaireDuplicateForm,
+    QuestionnaireForm,
+    QuestionnaireImportForm,
+)
 
 
 questionnaires_bp = Blueprint("questionnaires", __name__)
@@ -33,6 +52,78 @@ def _option_data(form: QuestionForm) -> list[dict]:
         }
         for index in range(1, 7)
     ]
+
+
+def _course_choices() -> list[tuple[str, str]]:
+    courses = Course.query.order_by(Course.title, Course.created_at.desc()).all()
+    return [(course.id, f"{course.title} · {course.code}") for course in courses]
+
+
+@questionnaires_bp.get("/questionnaires")
+@staff_required
+def index():
+    status = request.args.get("status", "all")
+    course_id = request.args.get("course_id", "")
+    query = Questionnaire.query
+    if status == "published":
+        query = query.filter(Questionnaire.is_published.is_(True))
+    elif status == "draft":
+        query = query.filter(Questionnaire.is_published.is_(False))
+    else:
+        status = "all"
+    if course_id:
+        query = query.filter_by(course_id=course_id)
+    questionnaires = query.order_by(Questionnaire.updated_at.desc()).all()
+    choices = _course_choices()
+    create_form = QuestionnaireCourseForm(prefix="create")
+    create_form.course_id.choices = choices
+    import_form = QuestionnaireImportForm(prefix="import")
+    import_form.course_id.choices = choices
+    return render_template(
+        "questionnaires/index.html",
+        questionnaires=questionnaires,
+        courses=Course.query.order_by(Course.title).all(),
+        selected_course_id=course_id,
+        selected_status=status,
+        create_form=create_form,
+        import_form=import_form,
+    )
+
+
+@questionnaires_bp.post("/questionnaires/new")
+@staff_required
+def create_from_archive():
+    form = QuestionnaireCourseForm(prefix="create")
+    form.course_id.choices = _course_choices()
+    if form.validate_on_submit():
+        return redirect(url_for("questionnaires.create", course_id=form.course_id.data))
+    flash("Seleziona un corso valido.", "error")
+    return redirect(url_for("questionnaires.index"))
+
+
+@questionnaires_bp.post("/questionnaires/import")
+@staff_required
+def import_json():
+    form = QuestionnaireImportForm(prefix="import")
+    form.course_id.choices = _course_choices()
+    if not form.validate_on_submit():
+        flash("Seleziona un corso e un file JSON valido.", "error")
+        return redirect(url_for("questionnaires.index"))
+    raw = form.file.data.read(1_048_577)
+    if len(raw) > 1_048_576:
+        flash("Il file JSON supera il limite di 1 MB.", "error")
+        return redirect(url_for("questionnaires.index"))
+    try:
+        payload = json.loads(raw.decode("utf-8-sig"))
+        course = db.get_or_404(Course, form.course_id.data)
+        questionnaire = import_questionnaire(payload, course=course, actor=current_user)
+        db.session.commit()
+    except (UnicodeDecodeError, json.JSONDecodeError, QuestionnaireTransferError) as exc:
+        db.session.rollback()
+        flash(f"Importazione non riuscita: {exc}", "error")
+        return redirect(url_for("questionnaires.index"))
+    flash("Questionario importato come bozza. Controllalo prima di pubblicarlo.", "success")
+    return redirect(url_for("questionnaires.detail", questionnaire_id=questionnaire.id))
 
 
 @questionnaires_bp.route("/courses/<course_id>/questionnaires/new", methods=["GET", "POST"])
@@ -75,6 +166,67 @@ def detail(questionnaire_id: str):
         questionnaire=questionnaire,
         errors=validation_errors(questionnaire),
         empty_form=EmptyForm(),
+    )
+
+
+@questionnaires_bp.get("/questionnaires/<questionnaire_id>/preview")
+@staff_required
+def preview(questionnaire_id: str):
+    questionnaire = db.get_or_404(Questionnaire, questionnaire_id)
+    return render_template("questionnaires/preview.html", questionnaire=questionnaire)
+
+
+@questionnaires_bp.route("/questionnaires/<questionnaire_id>/duplicate", methods=["GET", "POST"])
+@staff_required
+def duplicate(questionnaire_id: str):
+    source = db.get_or_404(Questionnaire, questionnaire_id)
+    form = QuestionnaireDuplicateForm()
+    form.course_id.choices = _course_choices()
+    if not form.is_submitted():
+        form.course_id.data = source.course_id
+    if form.validate_on_submit():
+        target_course = db.get_or_404(Course, form.course_id.data)
+        try:
+            questionnaire = duplicate_questionnaire(source, course=target_course, actor=current_user)
+            db.session.commit()
+        except QuestionnaireTransferError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+        else:
+            flash("Questionario duplicato come bozza indipendente.", "success")
+            return redirect(url_for("questionnaires.detail", questionnaire_id=questionnaire.id))
+    return render_template("questionnaires/duplicate.html", questionnaire=source, form=form)
+
+
+def _download_name(questionnaire: Questionnaire, suffix: str) -> str:
+    stem = secure_filename(questionnaire.title).strip("._") or "questionario"
+    return f"{stem}.{suffix}"
+
+
+@questionnaires_bp.get("/questionnaires/<questionnaire_id>/export.json")
+@staff_required
+def export_json(questionnaire_id: str):
+    questionnaire = db.get_or_404(Questionnaire, questionnaire_id)
+    content = json.dumps(
+        questionnaire_to_dict(questionnaire), ensure_ascii=False, indent=2
+    ).encode("utf-8") + b"\n"
+    return send_file(
+        BytesIO(content),
+        as_attachment=True,
+        download_name=_download_name(questionnaire, "questionario.json"),
+        mimetype="application/json",
+    )
+
+
+@questionnaires_bp.get("/questionnaires/<questionnaire_id>/export.md")
+@staff_required
+def export_markdown(questionnaire_id: str):
+    questionnaire = db.get_or_404(Questionnaire, questionnaire_id)
+    return send_file(
+        BytesIO(questionnaire_to_markdown(questionnaire).encode("utf-8")),
+        as_attachment=True,
+        download_name=_download_name(questionnaire, "questionario.md"),
+        mimetype="text/markdown",
     )
 
 

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Duplica questionario · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ questionnaire.title }}</p><h1>Duplica questionario</h1><p class="lead">La copia sarà indipendente, in bozza e priva di tentativi e risultati.</p></div><a class="button button-quiet" href="{{ url_for('questionnaires.detail', questionnaire_id=questionnaire.id) }}">Annulla</a></section>
+<section class="panel narrow-panel"><form class="stack-form" method="post">{{ form.hidden_tag() }}<div class="field">{{ form.course_id.label }}{{ form.course_id() }}{% for error in form.course_id.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div>{{ form.submit(class_='button button-primary') }}</form></section>
+{% endblock %}

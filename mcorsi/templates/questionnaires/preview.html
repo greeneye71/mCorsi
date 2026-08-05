@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Anteprima · {{ questionnaire.title }} · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading detail-heading">
+  <div><p class="eyebrow">Anteprima partecipante</p><h1>{{ questionnaire.title }}</h1><p class="lead">{{ questionnaire.instructions or 'Rispondi a tutte le domande prima di inviare.' }}</p></div>
+  <a class="button button-quiet" href="{{ url_for('questionnaires.detail', questionnaire_id=questionnaire.id) }}">Chiudi anteprima</a>
+</section>
+<div class="preview-notice">Questa è un'anteprima: le risposte non vengono salvate e le soluzioni non sono mostrate.</div>
+<section class="attempt-form preview-form">
+  {% for question in questionnaire.questions %}
+    <fieldset class="panel attempt-question" disabled>
+      <legend><span>{{ loop.index }}</span>{{ question.prompt }}</legend>
+      <small>{{ 'Puoi selezionare più risposte' if question.response_type == 'multiple' else 'Seleziona una risposta' }}</small>
+      <div class="answer-options">
+        {% for option in question.options %}<label class="answer-option"><input type="{{ 'checkbox' if question.response_type == 'multiple' else 'radio' }}" name="preview_{{ question.id }}"> <span>{{ option.text }}</span></label>{% endfor %}
+      </div>
+    </fieldset>
+  {% else %}<div class="inline-empty"><p>Il questionario non contiene ancora domande.</p></div>{% endfor %}
+</section>
+{% endblock %}

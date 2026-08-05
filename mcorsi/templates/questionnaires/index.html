@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Questionari · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><p class="eyebrow">Valutazioni</p><h1>Archivio questionari</h1><p class="lead">Crea, riutilizza e controlla i questionari di tutti i corsi.</p></div>
+</section>
+
+<section class="questionnaire-tools">
+  <article class="panel compact-panel">
+    <p class="eyebrow">Nuovo</p><h2>Crea per un corso</h2>
+    {% if create_form.course_id.choices %}
+      <form class="stack-form" method="post" action="{{ url_for('questionnaires.create_from_archive') }}">
+        {{ create_form.hidden_tag() }}
+        <div class="field">{{ create_form.course_id.label }}{{ create_form.course_id() }}</div>
+        {{ create_form.submit(class_='button button-primary') }}
+      </form>
+    {% else %}<p class="muted-copy">Crea prima un corso.</p>{% endif %}
+  </article>
+  <article class="panel compact-panel">
+    <p class="eyebrow">Trasferimento</p><h2>Importa da JSON</h2>
+    <p class="muted-copy">L'importazione crea sempre una bozza senza partecipanti o risultati.</p>
+    {% if import_form.course_id.choices %}
+      <form class="stack-form" method="post" enctype="multipart/form-data" action="{{ url_for('questionnaires.import_json') }}">
+        {{ import_form.hidden_tag() }}
+        <div class="field">{{ import_form.course_id.label }}{{ import_form.course_id() }}</div>
+        <div class="field">{{ import_form.file.label }}{{ import_form.file(accept='.json,application/json') }}</div>
+        {{ import_form.submit(class_='button button-quiet') }}
+      </form>
+    {% else %}<p class="muted-copy">Crea prima un corso.</p>{% endif %}
+  </article>
+</section>
+
+<section class="panel spaced-panel">
+  <div class="panel-heading"><div><p class="eyebrow">Ricerca</p><h2>{{ questionnaires|length }} questionari</h2></div></div>
+  <form class="filter-bar" method="get">
+    <label>Stato<select name="status"><option value="all" {{ 'selected' if selected_status == 'all' }}>Tutti</option><option value="draft" {{ 'selected' if selected_status == 'draft' }}>Bozze</option><option value="published" {{ 'selected' if selected_status == 'published' }}>Pubblicati</option></select></label>
+    <label>Corso<select name="course_id"><option value="">Tutti i corsi</option>{% for course in courses %}<option value="{{ course.id }}" {{ 'selected' if course.id == selected_course_id }}>{{ course.title }} · {{ course.code }}</option>{% endfor %}</select></label>
+    <button class="button button-quiet" type="submit">Filtra</button>
+  </form>
+  {% if questionnaires %}
+    <div class="questionnaire-archive">
+      {% for questionnaire in questionnaires %}
+        <article class="questionnaire-archive-row">
+          <div><div class="card-title-row"><span class="badge badge-{{ 'open' if questionnaire.is_published else 'draft' }}">{{ 'Pubblicato' if questionnaire.is_published else 'Bozza' }}</span><small>v{{ questionnaire.version }}</small></div><h3><a href="{{ url_for('questionnaires.detail', questionnaire_id=questionnaire.id) }}">{{ questionnaire.title }}</a></h3><p>{{ questionnaire.course.title }} · {{ questionnaire.course.code }}</p></div>
+          <dl><div><dt>Domande</dt><dd>{{ questionnaire.questions|length }}</dd></div><div><dt>Soglia</dt><dd>{{ questionnaire.passing_percentage }}%</dd></div><div><dt>Tentativi</dt><dd>{{ questionnaire.attempts|length }}</dd></div></dl>
+          <div class="action-row"><a class="button button-quiet" href="{{ url_for('questionnaires.preview', questionnaire_id=questionnaire.id) }}">Anteprima</a><a class="button button-primary" href="{{ url_for('questionnaires.detail', questionnaire_id=questionnaire.id) }}">Gestisci</a></div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}<div class="inline-empty"><p>Nessun questionario corrisponde ai filtri.</p></div>{% endif %}
+</section>
+{% endblock %}

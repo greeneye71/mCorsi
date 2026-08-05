@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.2.1 · versione database 1**
+**Versione applicazione 0.3.0 · versione database 1**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -106,6 +106,8 @@ proxy TLS; non aprire la porta web sul router.
 - configurazione SMTP amministrativa con password cifrata;
 - nomi visualizzati per operatori e amministratori, distinti dalla mail di accesso;
 - builder per questionari a scelta singola o multipla;
+- archivio generale dei questionari con filtri, anteprima e duplicazione;
+- esportazione JSON reimportabile ed esportazione Markdown leggibile;
 - punteggi, soglia configurabile e massimo tre tentativi;
 - blocco delle modifiche dopo il primo tentativo e snapshot degli esiti;
 - documenti privati, modelli DOCX, firma immagine e attestati PDF immutabili;
@@ -116,14 +118,30 @@ proxy TLS; non aprire la porta web sul router.
 
 ## Questionari
 
-Gli operatori aggiungono uno o più questionari dalla pagina del corso. Ogni
-domanda può avere fino a sei opzioni nella UI corrente e un punteggio distinto
-per ciascuna risposta corretta. Prima della pubblicazione il sistema controlla
-la presenza delle domande, delle risposte corrette e di un punteggio valido.
+Gli operatori gestiscono tutti i questionari dal menu **Questionari**, oppure
+dalla pagina del singolo corso. L'archivio consente di filtrare per corso e
+stato, creare un questionario, visualizzarlo come apparirà al partecipante e
+duplicarlo nello stesso corso o in un altro. Ogni domanda può avere fino a sei
+opzioni nella UI corrente e un punteggio distinto per ciascuna risposta
+corretta. Prima della pubblicazione il sistema controlla la presenza delle
+domande, delle risposte corrette e di un punteggio valido.
 
 Nelle domande multiple vengono assegnati i punti delle opzioni corrette
 selezionate; se viene selezionata anche un'opzione errata, la domanda vale zero.
 Il partecipante non vede le soluzioni e può effettuare al massimo tre tentativi.
+
+Dal dettaglio sono disponibili due esportazioni:
+
+- **JSON** è il formato ufficiale e versionato per trasferire o archiviare la
+  definizione completa; può essere importato dal menu Questionari;
+- **Markdown** è destinato a lettura, revisione e stampa e contiene anche
+  soluzioni e punteggi, ma non viene importato.
+
+I file non includono tentativi, risultati, identificativi interni o dati dei
+partecipanti. Un questionario importato o duplicato è sempre una nuova bozza
+indipendente e deve essere controllato prima della pubblicazione. Il limite di
+caricamento del JSON è 1 MB; il formato corrente è `mcorsi.questionnaire`,
+versione `1`.
 
 ## Configurazione email e OTP
 

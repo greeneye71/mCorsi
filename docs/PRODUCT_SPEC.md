@@ -1,7 +1,7 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.2.1
+Versione applicazione: 0.3.0
 Versione database: 1
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
@@ -206,6 +206,19 @@ Le risposte corrette non vengono esposte ai partecipanti né al server MCP.
 Un questionario pubblicato può essere sospeso e modificato soltanto finché non
 esistono tentativi. Dopo il primo tentativo domande, punteggi e soglia sono
 bloccati; ogni tentativo conserva inoltre uno snapshot dei dati valutati.
+
+Gli operatori dispongono di un archivio trasversale filtrabile per corso e
+stato, con anteprima identica alla compilazione del partecipante. Un
+questionario può essere duplicato nello stesso corso o in un altro: la copia è
+indipendente, in bozza e non contiene tentativi.
+
+La definizione completa può essere esportata e reimportata come JSON nel formato
+versionato `mcorsi.questionnaire`. Il trasferimento comprende domande, opzioni,
+soluzioni e punteggi, ma esclude identificativi interni, tentativi, risultati e
+dati personali. Ogni importazione produce una bozza e applica le stesse
+validazioni del builder. È disponibile anche un'esportazione Markdown leggibile
+per revisione o stampa; contenendo le soluzioni, è riservata agli operatori e
+non è un formato di importazione.
 
 ## 8. Attestati
 

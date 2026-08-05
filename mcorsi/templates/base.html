@@ -19,6 +19,7 @@
         <nav class="main-nav" aria-label="Navigazione principale">
           <a class="{{ 'is-active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}">Panoramica</a>
           <a class="{{ 'is-active' if request.blueprint == 'courses' else '' }}" href="{{ url_for('courses.index') }}">Corsi</a>
+          <a class="{{ 'is-active' if request.blueprint == 'questionnaires' else '' }}" href="{{ url_for('questionnaires.index') }}">Questionari</a>
           <a class="{{ 'is-active' if request.blueprint == 'participants' else '' }}" href="{{ url_for('participants.index') }}">Partecipanti</a>
           <a class="{{ 'is-active' if request.blueprint == 'companies' else '' }}" href="{{ url_for('companies.index') }}">Aziende</a>
           <a class="{{ 'is-active' if request.blueprint == 'documents' else '' }}" href="{{ url_for('documents.library') }}">Documenti</a>

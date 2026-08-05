@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import json
 from datetime import date, time
 from decimal import Decimal
 
@@ -290,3 +292,104 @@ def test_participant_can_complete_questionnaire_from_mobile_flow(app, client):
     result = client.get(submitted.headers["Location"])
     assert result.status_code == 200
     assert b"Questionario superato" in result.data
+
+
+def test_staff_archive_preview_export_duplicate_and_json_import(app, client):
+    with app.app_context():
+        admin = _user("admin", "admin@example.it")
+        source_course = _course(admin)
+        target_course = _course(admin)
+        questionnaire = _questionnaire(source_course)
+        db.session.commit()
+        questionnaire_id = questionnaire.id
+        target_course_id = target_course.id
+
+    assert client.post(
+        "/auth/login", data={"email": "admin@example.it", "password": PASSWORD}
+    ).status_code == 302
+
+    archive = client.get("/questionnaires")
+    assert archive.status_code == 200
+    assert b"Archivio questionari" in archive.data
+    assert b"Valutazione finale" in archive.data
+
+    preview = client.get(f"/questionnaires/{questionnaire_id}/preview")
+    assert preview.status_code == 200
+    assert b"Anteprima partecipante" in preview.data
+    assert b"Il piombo scherma le radiazioni?" in preview.data
+    assert b"Corretta" not in preview.data
+
+    exported = client.get(f"/questionnaires/{questionnaire_id}/export.json")
+    assert exported.status_code == 200
+    payload = json.loads(exported.data)
+    assert payload["format"] == "mcorsi.questionnaire"
+    assert payload["schema_version"] == 1
+    assert payload["questionnaire"]["questions"][0]["options"][0]["is_correct"] is True
+    assert "attempts" not in payload["questionnaire"]
+    assert "id" not in payload["questionnaire"]
+
+    markdown = client.get(f"/questionnaires/{questionnaire_id}/export.md")
+    assert markdown.status_code == 200
+    assert b"# Valutazione finale" in markdown.data
+    assert b"[x] Vero" in markdown.data
+
+    duplicated = client.post(
+        f"/questionnaires/{questionnaire_id}/duplicate",
+        data={"course_id": target_course_id},
+    )
+    assert duplicated.status_code == 302
+
+    imported = client.post(
+        "/questionnaires/import",
+        data={
+            "import-course_id": target_course_id,
+            "import-file": (io.BytesIO(exported.data), "questionario.json"),
+        },
+        content_type="multipart/form-data",
+    )
+    assert imported.status_code == 302
+
+    with app.app_context():
+        copies = Questionnaire.query.filter_by(course_id=target_course_id).order_by(
+            Questionnaire.sort_order
+        ).all()
+        assert len(copies) == 2
+        assert all(item.is_published is False for item in copies)
+        assert all(item.attempts == [] for item in copies)
+        assert all(item.version == 2 for item in copies)
+        assert all(len(item.questions) == 2 for item in copies)
+        assert copies[0].questions[0].id != copies[1].questions[0].id
+
+
+def test_invalid_questionnaire_json_is_rejected_without_partial_data(app, client):
+    with app.app_context():
+        admin = _user("admin", "admin@example.it")
+        course = _course(admin)
+        db.session.commit()
+        course_id = course.id
+    client.post("/auth/login", data={"email": "admin@example.it", "password": PASSWORD})
+    invalid = {
+        "format": "mcorsi.questionnaire",
+        "schema_version": 1,
+        "questionnaire": {
+            "title": "Non valido",
+            "passing_percentage": 70,
+            "questions": [],
+        },
+    }
+    response = client.post(
+        "/questionnaires/import",
+        data={
+            "import-course_id": course_id,
+            "import-file": (
+                io.BytesIO(json.dumps(invalid).encode("utf-8")),
+                "questionario.json",
+            ),
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"Importazione non riuscita" in response.data
+    with app.app_context():
+        assert Questionnaire.query.count() == 0

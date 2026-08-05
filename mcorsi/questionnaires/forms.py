@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField, FileRequired
 from wtforms import BooleanField, DecimalField, IntegerField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional
 
@@ -48,3 +49,22 @@ class EmptyForm(FlaskForm):
 
 class AttemptSubmissionForm(FlaskForm):
     submit = SubmitField("Invia risposte")
+
+
+class QuestionnaireCourseForm(FlaskForm):
+    course_id = SelectField("Corso", validators=[DataRequired()])
+    submit = SubmitField("Crea questionario")
+
+
+class QuestionnaireDuplicateForm(FlaskForm):
+    course_id = SelectField("Corso di destinazione", validators=[DataRequired()])
+    submit = SubmitField("Duplica come bozza")
+
+
+class QuestionnaireImportForm(FlaskForm):
+    course_id = SelectField("Corso di destinazione", validators=[DataRequired()])
+    file = FileField(
+        "File JSON",
+        validators=[FileRequired(), FileAllowed(["json"], "Seleziona un file JSON.")],
+    )
+    submit = SubmitField("Importa come bozza")

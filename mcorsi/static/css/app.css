@@ -223,6 +223,29 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
 .result-failed .result-icon { background: var(--accent); }
 .attempt-results { margin-top: 1rem; }
 .attempt-columns { grid-template-columns: 1.2fr .5fr .7fr .7fr .8fr; }
+.questionnaire-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.compact-panel h2 { margin-bottom: .65rem; }
+.muted-copy { margin-bottom: 1rem; color: var(--muted); font-size: .83rem; }
+.stack-form { display: grid; align-items: end; }
+.stack-form .button { width: fit-content; }
+.filter-bar { display: grid; grid-template-columns: minmax(9rem, .45fr) minmax(16rem, 1fr) auto; align-items: end; gap: .8rem; margin-top: 1rem; padding: .8rem; border-radius: .65rem; background: var(--surface-soft); }
+.filter-bar label { display: grid; gap: .3rem; color: var(--muted); font-size: .76rem; font-weight: 700; }
+.filter-bar select { min-height: 2.45rem; padding: .45rem .6rem; border: 1px solid #bcc7d5; border-radius: .45rem; color: var(--ink); background: #fff; }
+.questionnaire-archive { display: grid; margin-top: 1rem; }
+.questionnaire-archive-row { display: grid; grid-template-columns: minmax(15rem, 1fr) auto auto; align-items: center; gap: 1.5rem; padding: 1rem 0; border-top: 1px solid var(--line); }
+.questionnaire-archive-row h3 { margin: .25rem 0; font-size: 1rem; }
+.questionnaire-archive-row h3 a { color: var(--ink); text-decoration: none; }
+.questionnaire-archive-row p, .questionnaire-archive-row small { color: var(--muted); font-size: .78rem; }
+.questionnaire-archive-row dl { display: flex; gap: 1rem; margin: 0; }
+.questionnaire-archive-row dl div { min-width: 4rem; }
+.questionnaire-archive-row dt { color: var(--muted); font-size: .68rem; text-transform: uppercase; }
+.questionnaire-archive-row dd { margin: .1rem 0 0; font-weight: 750; }
+.transfer-links { display: flex; flex-wrap: wrap; gap: .8rem; margin: -0.5rem 0 1.2rem; color: var(--muted); font-size: .78rem; }
+.transfer-links a { font-weight: 680; }
+.questionnaire-actions { justify-content: flex-end; }
+.preview-notice { max-width: 52rem; margin: 0 auto 1rem; padding: .75rem 1rem; border-radius: .65rem; color: var(--brand-dark); background: #eaf2fa; font-size: .83rem; }
+.preview-form .attempt-question:disabled { color: var(--ink); opacity: 1; }
+.preview-form .answer-option { cursor: default; }
 .status-card { display: flex; gap: .8rem; align-items: center; padding: .8rem 1rem; border-radius: .8rem; font-size: .86rem; }
 .status-ok { color: #175940; background: #e4f4ec; }
 .status-warning { color: #684d1d; background: #fff1d8; }
@@ -324,6 +347,10 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
   .builder-options li { align-items: flex-start; flex-direction: column; }
   .publish-bar, .attempt-submit { bottom: 4.8rem; align-items: stretch; flex-direction: column; }
   .attempt-columns { grid-template-columns: 1fr auto; }
+  .questionnaire-tools, .questionnaire-archive-row, .filter-bar { grid-template-columns: 1fr; }
+  .questionnaire-archive-row dl { justify-content: flex-start; }
+  .questionnaire-archive-row .action-row { justify-content: flex-start; }
+  .questionnaire-actions { justify-content: flex-start; }
   .certificate-row, .certificate-grid { grid-template-columns: 1fr; }
   .certificate-row form { align-items: stretch; flex-direction: column; }
   .readiness-note { text-align: left; }
