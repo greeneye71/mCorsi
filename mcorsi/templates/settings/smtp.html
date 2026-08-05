@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Configurazione SMTP · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Amministrazione</p><h1>Configurazione email</h1><p class="lead">Questi parametri vengono usati per OTP, comunicazioni e promemoria.</p></div></section>
+<form class="panel form-panel" method="post" novalidate>{{ form.hidden_tag() }}
+  <div class="form-section"><div class="section-heading"><h2>Server SMTP</h2><p>La password viene cifrata prima di essere salvata.</p></div><div class="form-grid">
+    <div class="field field-wide">{{ form.host.label }}{{ form.host(placeholder="smtp.example.it") }}</div><div class="field">{{ form.port.label }}{{ form.port() }}</div><div class="field">{{ form.timeout_seconds.label }}{{ form.timeout_seconds() }}</div><div class="field">{{ form.username.label }}{{ form.username(autocomplete="off") }}</div><div class="field">{{ form.password.label }}{{ form.password(autocomplete="new-password", placeholder='Lascia vuoto per non modificarla' if password_configured else '') }}{% if password_configured %}<p class="field-hint">Una password cifrata è già configurata.</p>{% endif %}</div>
+    <label class="check-row">{{ form.use_starttls() }} <span>{{ form.use_starttls.label.text }}</span></label><label class="check-row">{{ form.use_ssl() }} <span>{{ form.use_ssl.label.text }}</span></label>{% for error in form.use_ssl.errors %}<p class="field-error field-wide">{{ error }}</p>{% endfor %}
+  </div></div>
+  <div class="form-section"><div class="section-heading"><h2>Mittente</h2></div><div class="form-grid"><div class="field">{{ form.from_email.label }}{{ form.from_email() }}</div><div class="field">{{ form.from_name.label }}{{ form.from_name() }}</div></div></div>
+  <div class="form-section"><div class="section-heading"><h2>Verifica</h2><p>Puoi salvare e inviare immediatamente un messaggio di prova.</p></div><div class="form-grid"><div class="field field-wide">{{ form.test_recipient.label }}{{ form.test_recipient(placeholder="tuo-indirizzo@example.it") }}{% for error in form.test_recipient.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div></div></div>
+  <div class="form-actions">{{ form.save(class="button button-quiet") }}{{ form.save_and_test(class="button button-primary") }}</div>
+</form>
+{% endblock %}

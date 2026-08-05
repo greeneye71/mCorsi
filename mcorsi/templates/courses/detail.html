@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ course.title }} · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading detail-heading">
+  <div><div class="card-title-row"><span class="badge badge-{{ course.status }}">{{ course_status_labels[course.status] }}</span><code>{{ course.code }}</code></div><h1>{{ course.title }}</h1><p class="lead">{{ course.description or 'Nessuna descrizione.' }}</p></div>
+  <div class="action-row"><a class="button button-quiet" href="{{ url_for('courses.duplicate', course_id=course.id) }}">Duplica</a><a class="button button-primary" href="{{ url_for('courses.edit', course_id=course.id) }}">Modifica</a></div>
+</section>
+
+<section class="content-grid spaced-panel">
+  <article class="panel"><div class="panel-heading"><div><p class="eyebrow">Materiale didattico</p><h2>Documenti del corso</h2></div></div>
+    <form class="inline-form" method="post" action="{{ url_for('documents.upload_course_document', course_id=course.id) }}" enctype="multipart/form-data">{{ course_document_form.hidden_tag() }}<div class="field grow-field">{{ course_document_form.label.label }}{{ course_document_form.label(placeholder='es. Dispensa') }}</div><div class="field grow-field">{{ course_document_form.file.label }}{{ course_document_form.file() }}</div>{{ course_document_form.submit(class='button button-primary') }}</form>
+    <div class="record-list">{% for document in course.documents %}<a class="record-row" href="{{ url_for('documents.download_course_document', document_id=document.id) }}"><span><strong>{{ document.label }}</strong><small>{{ document.stored_file.original_name }} · {{ (document.stored_file.size_bytes / 1024)|round|int }} KB</small></span><span>Scarica</span></a>{% else %}<p class="field-hint">Nessun documento caricato.</p>{% endfor %}</div>
+  </article>
+  <article class="panel"><p class="eyebrow">Emissione</p><h2>Configurazione attestato</h2>{% if certificate_settings_form.certificate_template_id.choices %}<form method="post" action="{{ url_for('documents.course_settings', course_id=course.id) }}">{{ certificate_settings_form.hidden_tag() }}<div class="field">{{ certificate_settings_form.certificate_template_id.label }}{{ certificate_settings_form.certificate_template_id() }}</div><div class="field">{{ certificate_settings_form.signature_asset_id.label }}{{ certificate_settings_form.signature_asset_id() }}</div>{{ certificate_settings_form.submit(class='button button-primary') }}</form>{% else %}<div class="inline-empty"><p>Carica prima un modello DOCX.</p><a class="button button-primary" href="{{ url_for('documents.library') }}">Configura</a></div>{% endif %}</article>
+</section>
+<section class="detail-grid">
+  <article class="panel">
+    <p class="eyebrow">Svolgimento</p>
+    <dl class="detail-list">
+      <div><dt>Data e ora</dt><dd>{{ course.first_session.starts_at|local_datetime }}–{{ course.first_session.ends_at|local_datetime('%H:%M') if course.first_session else '—' }}</dd></div>
+      <div><dt>Referente</dt><dd>{{ course.referent.display_name }}</dd></div>
+      <div><dt>Modalità</dt><dd>{{ {'online':'Online','in_person':'In presenza','hybrid':'Ibrido'}[course.delivery_mode] }}</dd></div>
+      <div><dt>Scadenza attestato</dt><dd>{{ course.certificate_validity_months ~ ' mesi' if course.certificate_validity_months else 'Nessuna scadenza' }}</dd></div>
+      {% if course.meeting_url %}<div><dt>Videoconferenza</dt><dd><a href="{{ course.meeting_url }}" target="_blank" rel="noopener">Apri collegamento</a></dd></div>{% endif %}
+    </dl>
+  </article>
+  <aside class="panel panel-tint"><p class="eyebrow">Codice di ammissione</p><div class="course-code">{{ course.code }}</div><p>Il partecipante può usare questo codice nella propria area per chiedere l'accesso.</p></aside>
+</section>
+
+<section class="panel spaced-panel">
+  <div class="panel-heading"><div><p class="eyebrow">Valutazione</p><h2>Questionari</h2></div><a class="button button-primary" href="{{ url_for('questionnaires.create', course_id=course.id) }}">Nuovo questionario</a></div>
+  {% if course.questionnaires %}<div class="record-list">{% for questionnaire in course.questionnaires %}<a class="record-row" href="{{ url_for('questionnaires.detail', questionnaire_id=questionnaire.id) }}"><span><strong>{{ questionnaire.title }}</strong><small>{{ questionnaire.questions|length }} domande · soglia {{ questionnaire.passing_percentage }}% · massimo {{ questionnaire.maximum_score }} punti</small></span><span class="badge badge-{{ 'open' if questionnaire.is_published else 'draft' }}">{{ 'Pubblicato' if questionnaire.is_published else 'Bozza' }}</span></a>{% endfor %}</div>
+  {% else %}<div class="inline-empty"><p>Nessun questionario configurato.</p></div>{% endif %}
+</section>
+
+<section class="panel spaced-panel">
+  <div class="panel-heading"><div><p class="eyebrow">Partecipanti</p><h2>Richieste e iscritti</h2></div><span>{{ course.enrollments|length }} ammessi</span></div>
+  <form class="inline-form" method="post" action="{{ url_for('courses.add_admission', course_id=course.id) }}">
+    {{ admission_form.hidden_tag() }}
+    <div class="field grow-field">{{ admission_form.email.label }}{{ admission_form.email(placeholder="partecipante@example.it") }}</div>
+    {{ admission_form.submit(class="button button-primary") }}
+  </form>
+  {% if admissions %}
+    <div class="admission-list">
+      {% for admission in admissions %}
+        <article class="admission-row">
+          <div class="admission-person"><strong>{{ admission.participant.display_name }}</strong><span>{{ admission.participant.email }}</span><small>Richiesta {{ admission.created_at|local_datetime }}</small></div>
+          <span class="badge badge-{{ admission.status }}">{{ admission_status_labels[admission.status] }}</span>
+          {% if admission.status == 'pending' and may_review %}
+            <form class="decision-form" method="post">
+              {{ decision_form.csrf_token }}
+              <input type="text" name="decision_message" aria-label="Messaggio per {{ admission.participant.display_name }}" placeholder="Messaggio facoltativo">
+              <input type="text" name="internal_note" aria-label="Nota interna" placeholder="Nota interna facoltativa">
+              <div class="action-row compact-actions">
+                <button class="button button-quiet danger-button" type="submit" formaction="{{ url_for('courses.reject_admission', course_id=course.id, admission_id=admission.id) }}">Rifiuta</button>
+                <button class="button button-primary" type="submit" formaction="{{ url_for('courses.approve_admission', course_id=course.id, admission_id=admission.id) }}">Ammetti</button>
+              </div>
+            </form>
+          {% elif admission.status == 'pending' %}<small>Solo il referente può decidere.</small>{% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}<div class="inline-empty"><p>Nessuna richiesta registrata.</p></div>{% endif %}
+</section>
+
+{% if course.enrollments %}<section class="panel spaced-panel"><div class="panel-heading"><div><p class="eyebrow">Presenze e attestati</p><h2>Iscritti ammessi</h2></div></div><div class="certificate-roster">
+{% for enrollment in course.enrollments %}{% set ready = enrollment_readiness[enrollment.id] %}<article class="certificate-row"><div><strong>{{ enrollment.participant.display_name }}</strong><small>{{ enrollment.participant.email }}</small></div><form method="post" action="{{ url_for('documents.set_attendance', enrollment_id=enrollment.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><select name="attendance_status" aria-label="Presenza di {{ enrollment.participant.display_name }}">{% for value,label in attendance_form.attendance_status.choices %}<option value="{{ value }}" {{ 'selected' if enrollment.attendance_status == value }}>{{ label }}</option>{% endfor %}</select><button class="button button-quiet" type="submit">Salva</button></form><div>{% if enrollment.certificate %}<a class="button button-quiet" href="{{ url_for('documents.download_certificate', certificate_id=enrollment.certificate.id) }}">Scarica attestato</a>{% elif ready[0] %}<form method="post" action="{{ url_for('documents.create_certificate', enrollment_id=enrollment.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-primary" type="submit">Genera attestato</button></form>{% else %}<small class="readiness-note">Manca: {{ ready[1]|join(', ') }}</small>{% endif %}</div></article>{% endfor %}
+</div></section>{% endif %}
+{% endblock %}

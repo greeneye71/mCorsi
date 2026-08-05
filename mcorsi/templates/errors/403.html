@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Accesso non consentito · mCorsi{% endblock %}
+{% block content %}<section class="empty-state"><p class="eyebrow">Errore 403</p><h1>Accesso non consentito</h1><p>Il tuo account non dispone dei permessi richiesti.</p><a class="button button-primary" href="{{ url_for('main.dashboard') }}">Torna alla pagina iniziale</a></section>{% endblock %}

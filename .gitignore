@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+instance/
+.pytest_cache/
+.pytest-tmp/
+pytest-cache-files-*/
+.coverage
+.coverage.*
+.ruff_cache/
+.mypy_cache/
+.idea/
+.vscode/
+.env
+*.log
+~$*
+
+# Prototipo monolitico precedente, conservato solo localmente.
+/app.py
+/schema.sql
+/static/
+/templates/

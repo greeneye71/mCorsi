@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Accesso operatori · mCorsi{% endblock %}
+{% block content %}
+<section class="auth-layout">
+  <div class="auth-intro">
+    <p class="eyebrow">Gestione della formazione</p>
+    <h1>Corsi, questionari e attestati in un unico posto.</h1>
+    <p class="lead">Area riservata agli operatori. Partecipanti e aziende accedono con un codice temporaneo via email.</p>
+    <div class="feature-row" aria-label="Funzioni principali">
+      <span>Mobile</span><span>Tracciabile</span><span>Sicura</span>
+    </div>
+  </div>
+  <div class="panel auth-panel">
+    <p class="eyebrow">Area operatori</p>
+    <h2>Accedi</h2>
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="field">
+        {{ form.email.label }}
+        {{ form.email(autocomplete="username", inputmode="email", autofocus=true) }}
+        {% for error in form.email.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="field">
+        {{ form.password.label }}
+        {{ form.password(autocomplete="current-password") }}
+        {% for error in form.password.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+      <label class="check-row">{{ form.remember() }} <span>Resta connesso su questo dispositivo</span></label>
+      {{ form.submit(class="button button-primary button-full") }}
+    </form>
+    <p class="help-text">La password può essere reimpostata dall'amministratore tramite la utility a riga di comando.</p>
+    <div class="auth-switch">Sei un partecipante? <a href="{{ url_for('portal.access') }}">Ricevi il codice via email</a><br>Rappresenti un'azienda? <a href="{{ url_for('company_portal.access') }}">Area aziende</a></div>
+  </div>
+</section>
+{% endblock %}

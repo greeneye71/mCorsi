@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ course.title }}</p><h1>{{ heading }}</h1></div><a class="button button-quiet" href="{{ url_for('questionnaires.detail', questionnaire_id=questionnaire.id) if questionnaire else url_for('courses.detail', course_id=course.id) }}">Annulla</a></section>
+<form class="panel form-panel narrow-panel" method="post" novalidate>{{ form.hidden_tag() }}<div class="form-grid"><div class="field field-wide">{{ form.title.label }}{{ form.title() }}{% for error in form.title.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div><div class="field field-wide">{{ form.instructions.label }}{{ form.instructions(rows=5, placeholder="Indicazioni mostrate prima della compilazione") }}</div><div class="field">{{ form.passing_percentage.label }}{{ form.passing_percentage() }}{% for error in form.passing_percentage.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div><div class="field"><label>Tentativi consentiti</label><input value="3" disabled><p class="field-hint">Limite fisso previsto dal regolamento.</p></div></div><div class="form-actions">{{ form.submit(class="button button-primary") }}</div></form>
+{% endblock %}

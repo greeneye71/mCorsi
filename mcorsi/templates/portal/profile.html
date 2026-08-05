@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Il tuo profilo · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">{{ 'Primo accesso' if is_first_access else 'Area partecipante' }}</p><h1>{{ 'Completa il tuo profilo' if is_first_access else 'Il tuo profilo' }}</h1><p class="lead">Questi dati saranno usati per produrre correttamente gli attestati.</p></div></section>
+<form class="panel form-panel" method="post" novalidate>{{ form.hidden_tag() }}
+  <div class="form-section"><div class="section-heading"><h2>Dati anagrafici</h2><p>Nome, cognome, luogo e data di nascita sono obbligatori.</p></div><div class="form-grid">
+    <div class="field">{{ form.first_name.label }}{{ form.first_name(autocomplete="given-name") }}{% for error in form.first_name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    <div class="field">{{ form.last_name.label }}{{ form.last_name(autocomplete="family-name") }}{% for error in form.last_name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    <div class="field">{{ form.birth_place.label }}{{ form.birth_place() }}{% for error in form.birth_place.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    <div class="field">{{ form.birth_date.label }}{{ form.birth_date() }}{% for error in form.birth_date.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    <div class="field">{{ form.tax_code.label }}{{ form.tax_code(autocomplete="off") }}</div><div class="field">{{ form.certificate_title.label }}{{ form.certificate_title(placeholder="es. Dott., Ing.") }}</div>
+    <div class="field field-wide">{{ form.mobile_phone.label }}{{ form.mobile_phone(inputmode="tel", autocomplete="tel") }}<p class="field-hint">Facoltativo; sarà utilizzabile per promemoria futuri.</p></div>
+  </div></div>
+  <div class="form-section"><div class="section-heading"><h2>Azienda</h2><p>Se lavori per un'azienda, inserisci la partita IVA. Se è già nota, useremo i dati presenti.</p></div><div class="form-grid"><div class="field field-wide">{{ form.vat_number.label }}{{ form.vat_number(inputmode="text") }}</div></div>
+    <details class="company-details" {% if form.company_business_name.errors or form.company_address.errors or form.company_email.errors %}open{% endif %}><summary>L'azienda non è ancora presente? Inserisci i dati</summary><p>I dati verranno contrassegnati come “da verificare”.</p><div class="form-grid">
+      <div class="field field-wide">{{ form.company_business_name.label }}{{ form.company_business_name() }}{% for error in form.company_business_name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.company_tax_code.label }}{{ form.company_tax_code() }}</div><div class="field field-wide">{{ form.company_address.label }}{{ form.company_address() }}{% for error in form.company_address.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.company_postal_code.label }}{{ form.company_postal_code() }}{% for error in form.company_postal_code.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div><div class="field">{{ form.company_city.label }}{{ form.company_city() }}{% for error in form.company_city.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.company_province.label }}{{ form.company_province() }}</div><div class="field">{{ form.company_country.label }}{{ form.company_country() }}</div><div class="field">{{ form.company_email.label }}{{ form.company_email() }}{% for error in form.company_email.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div><div class="field">{{ form.company_pec.label }}{{ form.company_pec() }}</div>
+    </div></details>
+  </div>
+  <div class="form-actions">{{ form.submit(class="button button-primary") }}</div>
+</form>
+{% endblock %}

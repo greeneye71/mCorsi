@@ -1,0 +1,22 @@
+[Unit]
+Description=mCorsi web application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcorsi
+Group=mcorsi
+WorkingDirectory=/opt/mcorsi
+EnvironmentFile=/etc/mcorsi/mcorsi.env
+ExecStart=/opt/mcorsi/.venv/bin/python -m waitress --listen=127.0.0.1:8000 --threads=4 wsgi:app
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mcorsi /var/backups/mcorsi
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=mCorsi reminder email queue
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=mcorsi
+Group=mcorsi
+WorkingDirectory=/opt/mcorsi
+EnvironmentFile=/etc/mcorsi/mcorsi.env
+ExecStart=/opt/mcorsi/.venv/bin/python -m flask --app wsgi notifications run
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mcorsi /var/backups/mcorsi

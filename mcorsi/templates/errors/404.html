@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Pagina non trovata · mCorsi{% endblock %}
+{% block content %}<section class="empty-state"><p class="eyebrow">Errore 404</p><h1>Pagina non trovata</h1><p>La pagina richiesta non esiste o è stata spostata.</p><a class="button button-primary" href="{{ url_for('main.dashboard') }}">Torna alla pagina iniziale</a></section>{% endblock %}

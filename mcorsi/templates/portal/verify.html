@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Verifica codice · mCorsi{% endblock %}
+{% block content %}
+<section class="centered-auth"><div class="panel auth-panel"><p class="eyebrow">Verifica email</p><h1>Inserisci il codice</h1><p class="lead small-lead">Abbiamo inviato un codice di 6 cifre a <strong>{{ masked_email }}</strong>.</p>
+  <form method="post" novalidate>{{ form.hidden_tag() }}<div class="field otp-field">{{ form.code.label }}{{ form.code(autocomplete="one-time-code", inputmode="numeric", pattern="[0-9]*", maxlength="6", autofocus=true, placeholder="000000") }}{% for error in form.code.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>{{ form.submit(class="button button-primary button-full") }}</form>
+  <div class="auth-switch"><a href="{{ url_for('portal.access') }}">Invia un nuovo codice</a></div>
+</div></section>
+{% endblock %}

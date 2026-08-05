@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Duplica {{ course.title }} · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Nuova edizione</p><h1>Duplica “{{ course.title }}”</h1><p class="lead">La nuova edizione sarà in bozza, con un nuovo codice e senza partecipanti, richieste o risultati.</p></div></section>
+<form class="panel form-panel narrow-panel" method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="form-grid">
+    <div class="field field-wide">{{ form.referent_user_id.label }}{{ form.referent_user_id() }}</div>
+    <div class="field field-wide">{{ form.session_date.label }}{{ form.session_date() }}{% for error in form.session_date.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    <div class="field">{{ form.start_time.label }}{{ form.start_time() }}</div>
+    <div class="field">{{ form.end_time.label }}{{ form.end_time() }}{% for error in form.end_time.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+  </div>
+  <div class="form-actions"><a class="button button-quiet" href="{{ url_for('courses.detail', course_id=course.id) }}">Annulla</a>{{ form.submit(class="button button-primary") }}</div>
+</form>
+{% endblock %}

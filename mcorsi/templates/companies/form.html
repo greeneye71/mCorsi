@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Aziende</p><h1>{{ heading }}</h1></div><a class="button button-quiet" href="{{ url_for('companies.index') }}">Annulla</a></section>
+<form class="panel form-panel" method="post" novalidate>{{ form.hidden_tag() }}
+  <div class="form-section"><div class="section-heading"><h2>Dati fiscali</h2></div><div class="form-grid">
+    <div class="field field-wide">{{ form.business_name.label }}{{ form.business_name() }}{% for error in form.business_name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    <div class="field">{{ form.vat_number.label }}{{ form.vat_number() }}{% for error in form.vat_number.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    <div class="field">{{ form.tax_code.label }}{{ form.tax_code() }}</div><div class="field">{{ form.verification_status.label }}{{ form.verification_status() }}</div>
+  </div></div>
+  <div class="form-section"><div class="section-heading"><h2>Sede</h2></div><div class="form-grid form-grid-address">
+    <div class="field field-wide">{{ form.address.label }}{{ form.address() }}</div><div class="field">{{ form.postal_code.label }}{{ form.postal_code() }}</div><div class="field">{{ form.city.label }}{{ form.city() }}</div><div class="field">{{ form.province.label }}{{ form.province() }}</div><div class="field">{{ form.country.label }}{{ form.country() }}</div>
+  </div></div>
+  <div class="form-section"><div class="section-heading"><h2>Contatti</h2></div><div class="form-grid"><div class="field">{{ form.email.label }}{{ form.email() }}{% for error in form.email.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div><div class="field">{{ form.pec.label }}{{ form.pec() }}{% for error in form.pec.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div></div></div>
+  <div class="form-actions">{{ form.submit(class="button button-primary") }}</div>
+</form>
+{% endblock %}

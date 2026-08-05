@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Documenti e attestati · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Configurazione</p><h1>Documenti e attestati</h1><p class="lead">Gestisci i modelli Word e le firme usati per produrre PDF professionali.</p></div><a class="button button-quiet" href="{{ url_for('documents.default_template') }}">Scarica modello di esempio</a></section>
+<section class="status-card {{ 'status-ok' if converter[0] else 'status-warning' }}"><strong>Conversione PDF</strong><span>{{ converter[1] }}</span></section>
+<section class="content-grid spaced-panel">
+  <article class="panel"><p class="eyebrow">Modelli DOCX</p><h2>Nuovo modello</h2><p class="field-hint">Campi minimi: <code>{{ '{{ participant_full_name }}' }}</code> e <code>{{ '{{ course_title }}' }}</code>. Sono supportati anche dati anagrafici, corso, azienda, scadenza e firma.</p>
+    <form method="post" action="{{ url_for('documents.upload_template') }}" enctype="multipart/form-data">{{ template_form.hidden_tag() }}<div class="field">{{ template_form.name.label }}{{ template_form.name() }}</div><div class="field">{{ template_form.file.label }}{{ template_form.file(accept='.docx') }}</div>{{ template_form.submit(class='button button-primary') }}</form>
+    <div class="record-list">{% for item in templates %}<div class="record-row"><span><strong>{{ item.name }}</strong><small>{{ item.stored_file.original_name }} · {{ item.placeholders|length }} campi · {{ item.created_at|local_datetime }}</small></span><span class="badge badge-approved">Attivo</span></div>{% else %}<p class="field-hint">Nessun modello caricato.</p>{% endfor %}</div>
+  </article>
+  <article class="panel"><p class="eyebrow">Firma grafica</p><h2>Nuova firma</h2><form method="post" action="{{ url_for('documents.upload_signature') }}" enctype="multipart/form-data">{{ signature_form.hidden_tag() }}<div class="field">{{ signature_form.name.label }}{{ signature_form.name() }}</div><div class="field">{{ signature_form.signer_name.label }}{{ signature_form.signer_name() }}</div><div class="field">{{ signature_form.signer_title.label }}{{ signature_form.signer_title() }}</div><div class="field">{{ signature_form.file.label }}{{ signature_form.file(accept='image/png,image/jpeg') }}</div>{{ signature_form.submit(class='button button-primary') }}</form>
+    <div class="record-list">{% for item in signatures %}<div class="record-row"><span><strong>{{ item.name }}</strong><small>{{ item.signer_name }}{% if item.signer_title %} · {{ item.signer_title }}{% endif %}</small></span><span class="badge badge-approved">Attiva</span></div>{% else %}<p class="field-hint">Nessuna firma caricata.</p>{% endfor %}</div>
+  </article>
+</section>
+{% endblock %}

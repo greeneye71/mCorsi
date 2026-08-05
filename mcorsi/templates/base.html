@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123f3a">
+  <title>{% block title %}mCorsi{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <a class="skip-link" href="#contenuto">Vai al contenuto</a>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('main.dashboard') }}" aria-label="mCorsi, pagina iniziale">
+      <span class="brand-mark" aria-hidden="true">m</span>
+      <span>mCorsi</span>
+    </a>
+    {% if current_user.is_authenticated %}
+      {% if current_user.has_role('admin', 'operator') %}
+        <nav class="main-nav" aria-label="Navigazione principale">
+          <a href="{{ url_for('main.dashboard') }}">Panoramica</a>
+          <a href="{{ url_for('courses.index') }}">Corsi</a>
+          <a href="{{ url_for('participants.index') }}">Partecipanti</a>
+          <a href="{{ url_for('companies.index') }}">Aziende</a>
+          <a href="{{ url_for('documents.library') }}">Documenti</a>
+          <a href="{{ url_for('imports.index') }}">Importa</a>
+          {% if current_user.has_role('admin') %}<a href="{{ url_for('settings.staff') }}">Impostazioni</a>{% endif %}
+        </nav>
+      {% elif current_user.has_role('company_contact') and session.get('company_id') %}
+        <nav class="main-nav participant-nav" aria-label="Navigazione principale"><a href="{{ url_for('company_portal.dashboard') }}">Attestati dipendenti</a></nav>
+      {% elif current_user.has_role('participant') %}
+        <nav class="main-nav participant-nav" aria-label="Navigazione principale">
+          <a href="{{ url_for('portal.dashboard') }}">I miei corsi</a>
+          <a href="{{ url_for('portal.profile') }}">Profilo</a>
+        </nav>
+      {% endif %}
+      <nav class="user-nav" aria-label="Account">
+        <span class="user-label">{{ current_user.display_name }}</span>
+        <form action="{{ url_for('auth.logout') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="button button-quiet" type="submit">Esci</button>
+        </form>
+      </nav>
+    {% endif %}
+  </header>
+
+  <main id="contenuto" class="page-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="messages" aria-live="polite">
+          {% for category, message in messages %}
+            <div class="message message-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

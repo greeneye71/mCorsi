@@ -1,0 +1,22 @@
+[Unit]
+Description=mCorsi MCP server for operator assistants
+After=network-online.target mcorsi.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcorsi
+Group=mcorsi
+WorkingDirectory=/opt/mcorsi
+EnvironmentFile=/etc/mcorsi/mcorsi.env
+ExecStart=/opt/mcorsi/.venv/bin/python mcp_server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mcorsi /var/backups/mcorsi
+
+[Install]
+WantedBy=multi-user.target

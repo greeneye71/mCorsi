@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Panoramica · mCorsi{% endblock %}
+{% block content %}
+<section class="hero compact-hero">
+  <div>
+    <p class="eyebrow">Pannello operatori</p>
+    <h1>Bentornato, {{ current_user.display_name }}.</h1>
+    <p class="lead">Corsi, partecipanti e richieste di ammissione sono ora collegati in un unico flusso.</p>
+  </div>
+  <a class="button button-primary" href="{{ url_for('courses.create') }}">Nuovo corso</a>
+</section>
+
+<section class="stats-grid" aria-label="Riepilogo">
+  <article class="stat-card"><p>Corsi</p><strong>{{ counts.courses }}</strong><a href="{{ url_for('courses.index') }}">Apri elenco</a></article>
+  <article class="stat-card"><p>Partecipanti</p><strong>{{ counts.participants }}</strong><a href="{{ url_for('participants.index') }}">Apri anagrafica</a></article>
+  <article class="stat-card"><p>Richieste in attesa</p><strong>{{ counts.pending_admissions }}</strong><span>{{ counts.companies_pending }} aziende da verificare</span></article>
+</section>
+
+<section class="panel">
+  <div class="panel-heading">
+    <div><p class="eyebrow">Attività recente</p><h2>Ultimi corsi</h2></div>
+    <a href="{{ url_for('courses.index') }}">Vedi tutti</a>
+  </div>
+  {% if recent_courses %}
+    <div class="record-list">
+      {% for course in recent_courses %}
+        <a class="record-row" href="{{ url_for('courses.detail', course_id=course.id) }}">
+          <span><strong>{{ course.title }}</strong><small>{{ course.code }} · {{ course.first_session.starts_at|local_datetime if course.first_session else 'Data da definire' }}</small></span>
+          <span class="badge badge-{{ course.status }}">{{ course_status_labels[course.status] }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="inline-empty"><p>Non hai ancora creato corsi.</p><a class="button button-primary" href="{{ url_for('courses.create') }}">Crea il primo corso</a></div>
+  {% endif %}
+</section>
+{% endblock %}

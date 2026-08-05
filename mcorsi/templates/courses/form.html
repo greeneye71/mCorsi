@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Corsi</p><h1>{{ heading }}</h1></div>{% if course %}<a class="button button-quiet" href="{{ url_for('courses.detail', course_id=course.id) }}">Annulla</a>{% endif %}</section>
+<form class="panel form-panel" method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="form-section">
+    <div class="section-heading"><h2>Informazioni</h2><p>I dati con asterisco sono obbligatori.</p></div>
+    <div class="form-grid">
+      <div class="field field-wide">{{ form.title.label }}{{ form.title() }}{% for error in form.title.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.status.label }}{{ form.status() }}</div>
+      <div class="field">{{ form.referent_user_id.label }}{{ form.referent_user_id() }}</div>
+      <div class="field field-wide">{{ form.description.label }}{{ form.description(rows=5) }}</div>
+    </div>
+  </div>
+  <div class="form-section">
+    <div class="section-heading"><h2>Seduta</h2><p>La struttura dati supporta già più sedute; questa schermata ne gestisce una.</p></div>
+    <div class="form-grid form-grid-three">
+      <div class="field">{{ form.session_date.label }}{{ form.session_date() }}{% for error in form.session_date.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.start_time.label }}{{ form.start_time() }}</div>
+      <div class="field">{{ form.end_time.label }}{{ form.end_time() }}{% for error in form.end_time.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.delivery_mode.label }}{{ form.delivery_mode() }}</div>
+      <div class="field field-span-two">{{ form.meeting_url.label }}{{ form.meeting_url(placeholder="https://meet.google.com/...") }}{% for error in form.meeting_url.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+    </div>
+  </div>
+  <div class="form-section">
+    <div class="section-heading"><h2>Attestato</h2><p>Lascia vuoto se non è prevista una scadenza.</p></div>
+    <div class="form-grid"><div class="field">{{ form.certificate_validity_months.label }}{{ form.certificate_validity_months(placeholder="es. 60") }}{% for error in form.certificate_validity_months.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div></div>
+  </div>
+  <div class="form-actions">{{ form.submit(class="button button-primary") }}</div>
+</form>
+{% endblock %}

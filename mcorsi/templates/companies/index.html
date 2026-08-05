@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Aziende · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Anagrafiche</p><h1>Aziende</h1><p class="lead">Le aziende verificate potranno in seguito accedere agli attestati dei propri dipendenti.</p></div><a class="button button-primary" href="{{ url_for('companies.create') }}">Nuova azienda</a></section>
+{% if companies %}
+<section class="panel table-panel"><div class="data-table" role="table" aria-label="Aziende">
+  <div class="table-row company-columns table-head" role="row"><span>Azienda</span><span>Partita IVA</span><span>Stato</span><span></span></div>
+  {% for company in companies %}<div class="table-row company-columns" role="row">
+    <span data-label="Azienda"><strong>{{ company.business_name }}</strong><small>{{ company.city }} · {{ company.email }}</small></span>
+    <span data-label="Partita IVA"><code>{{ company.vat_number }}</code></span>
+    <span data-label="Stato"><span class="badge badge-{{ company.verification_status }}">{{ company_status_labels[company.verification_status] }}</span></span>
+    <span class="table-action"><a href="{{ url_for('companies.edit', company_id=company.id) }}">Modifica</a></span>
+  </div>{% endfor %}
+</div></section>
+{% else %}<section class="empty-state"><p class="eyebrow">Nessuna azienda</p><h1>Costruisci l'archivio aziende</h1><p>La partita IVA identifica in modo univoco ogni impresa.</p><a class="button button-primary" href="{{ url_for('companies.create') }}">Nuova azienda</a></section>{% endif %}
+{% endblock %}

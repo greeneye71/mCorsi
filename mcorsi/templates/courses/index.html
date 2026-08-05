@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Corsi · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><p class="eyebrow">Formazione</p><h1>Corsi</h1><p class="lead">Ogni voce rappresenta un'edizione con data, referente e codice propri.</p></div>
+  <a class="button button-primary" href="{{ url_for('courses.create') }}">Nuovo corso</a>
+</section>
+{% if courses %}
+  <div class="card-list">
+    {% for course in courses %}
+      <article class="panel course-card">
+        <div class="course-card-main">
+          <div class="card-title-row"><span class="badge badge-{{ course.status }}">{{ course_status_labels[course.status] }}</span><code>{{ course.code }}</code></div>
+          <h2><a href="{{ url_for('courses.detail', course_id=course.id) }}">{{ course.title }}</a></h2>
+          <p>{{ course.description|truncate(180) if course.description else 'Nessuna descrizione.' }}</p>
+        </div>
+        <dl class="meta-list">
+          <div><dt>Data</dt><dd>{{ course.first_session.starts_at|local_datetime if course.first_session else 'Da definire' }}</dd></div>
+          <div><dt>Referente</dt><dd>{{ course.referent.display_name }}</dd></div>
+          <div><dt>Iscritti</dt><dd>{{ course.enrollments|length }}</dd></div>
+        </dl>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <section class="empty-state"><p class="eyebrow">Nessun corso</p><h1>Inizia dalla prima edizione</h1><p>Puoi duplicarla in seguito senza copiare partecipanti e risultati.</p><a class="button button-primary" href="{{ url_for('courses.create') }}">Crea un corso</a></section>
+{% endif %}
+{% endblock %}

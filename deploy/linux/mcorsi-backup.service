@@ -1,0 +1,15 @@
+[Unit]
+Description=mCorsi verified backup
+
+[Service]
+Type=oneshot
+User=mcorsi
+Group=mcorsi
+WorkingDirectory=/opt/mcorsi
+EnvironmentFile=/etc/mcorsi/mcorsi.env
+ExecStart=/opt/mcorsi/.venv/bin/python -m flask --app wsgi backup create
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mcorsi /var/backups/mcorsi

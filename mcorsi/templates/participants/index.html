@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Partecipanti · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Anagrafiche</p><h1>Partecipanti</h1><p class="lead">I dati completi saranno usati per generare gli attestati.</p></div><a class="button button-primary" href="{{ url_for('participants.create') }}">Nuovo partecipante</a></section>
+{% if participants %}
+<section class="panel table-panel">
+  <div class="data-table" role="table" aria-label="Partecipanti">
+    <div class="table-row table-head" role="row"><span>Partecipante</span><span>Azienda</span><span>Profilo</span><span></span></div>
+    {% for participant in participants %}
+      {% set employment = participant.participant_profile.current_employment if participant.participant_profile else none %}
+      <div class="table-row" role="row">
+        <span data-label="Partecipante"><strong>{{ participant.display_name }}</strong><small>{{ participant.email }}</small></span>
+        <span data-label="Azienda">{{ employment.company.business_name if employment else '—' }}</span>
+        <span data-label="Profilo"><span class="badge badge-{{ 'verified' if participant.profile_completed else 'pending' }}">{{ 'Completo' if participant.profile_completed else 'Da completare' }}</span></span>
+        <span class="table-action"><a href="{{ url_for('participants.edit', user_id=participant.id) }}">Modifica</a></span>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}<section class="empty-state"><p class="eyebrow">Nessun partecipante</p><h1>Crea la prima anagrafica</h1><p>In seguito potrai anche importarli dai file Excel di Forms.</p><a class="button button-primary" href="{{ url_for('participants.create') }}">Nuovo partecipante</a></section>{% endif %}
+{% endblock %}

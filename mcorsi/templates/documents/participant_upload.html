@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Carica attestato · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Archivio personale</p><h1>Carica un attestato</h1><p class="lead">Aggiungi un attestato conseguito in precedenza. Un operatore ne controllerà i dati.</p></div><a class="button button-quiet" href="{{ url_for('portal.dashboard') }}">Annulla</a></section>
+<form class="panel form-panel narrow-panel" method="post" enctype="multipart/form-data" novalidate>{{ form.hidden_tag() }}
+  <div class="field">{{ form.title.label }}{{ form.title() }}{% for error in form.title.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+  <div class="form-grid"><div class="field">{{ form.course_date.label }}{{ form.course_date() }}</div><div class="field">{{ form.expires_at.label }}{{ form.expires_at() }}<p class="field-hint">Lascia vuoto se non prevista.</p></div></div>
+  <div class="field">{{ form.file.label }}{{ form.file(accept='application/pdf') }}{% for error in form.file.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+  <div class="form-actions">{{ form.submit(class='button button-primary') }}</div>
+</form>
+{% endblock %}

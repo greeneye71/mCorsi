@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} · mCorsi{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Anagrafiche</p><h1>{{ heading }}</h1></div><a class="button button-quiet" href="{{ url_for('participants.index') }}">Annulla</a></section>
+<form class="panel form-panel" method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="form-section"><div class="section-heading"><h2>Identità</h2><p>Nome e cognome sono obbligatori; gli altri dati completano l'attestato.</p></div>
+    <div class="form-grid">
+      <div class="field field-wide">{{ form.email.label }}{{ form.email() }}{% for error in form.email.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.first_name.label }}{{ form.first_name() }}{% for error in form.first_name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.last_name.label }}{{ form.last_name() }}{% for error in form.last_name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.birth_place.label }}{{ form.birth_place() }}</div>
+      <div class="field">{{ form.birth_date.label }}{{ form.birth_date() }}</div>
+      <div class="field">{{ form.tax_code.label }}{{ form.tax_code() }}</div>
+      <div class="field">{{ form.certificate_title.label }}{{ form.certificate_title(placeholder="es. Dott., Ing.") }}</div>
+    </div>
+  </div>
+  <div class="form-section"><div class="section-heading"><h2>Contatti e lavoro</h2><p>Il telefono sarà utilizzabile per i promemoria quando verrà attivato il relativo canale.</p></div>
+    <div class="form-grid"><div class="field">{{ form.mobile_phone.label }}{{ form.mobile_phone(inputmode="tel") }}</div><div class="field">{{ form.company_id.label }}{{ form.company_id() }}<p class="field-hint">Se manca, creala prima dalla sezione Aziende.</p></div></div>
+  </div>
+  <div class="form-actions">{{ form.submit(class="button button-primary") }}</div>
+</form>
+{% if participant is defined %}<section class="panel form-panel spaced-panel"><div class="panel-heading"><div><p class="eyebrow">Archivio</p><h2>Attestati</h2></div></div><div class="record-list">{% for certificate in certificates %}<div class="record-row"><span><strong>{{ certificate.title_snapshot }}</strong><small>{{ certificate.course_date.strftime('%d/%m/%Y') }} · {{ 'verificato' if certificate.verification_status == 'verified' else 'da verificare' }}</small></span><div class="action-row"><a class="button button-quiet" href="{{ url_for('documents.download_certificate', certificate_id=certificate.id) }}">Scarica</a>{% if certificate.verification_status != 'verified' %}<form method="post" action="{{ url_for('documents.verify_certificate', certificate_id=certificate.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-primary" type="submit">Verifica</button></form>{% endif %}</div></div>{% else %}<p class="field-hint">Nessun attestato.</p>{% endfor %}</div></section>{% endif %}
+{% endblock %}
