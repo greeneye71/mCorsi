@@ -125,7 +125,10 @@ def staff_password(user_id: str):
         db.session.commit()
         flash(f"Password aggiornata per {user.email}.", "success")
     else:
-        flash("La password deve avere almeno 12 caratteri e le conferme devono coincidere.", "error")
+        flash(
+            "La password non rispetta i requisiti oppure le conferme non coincidono.",
+            "error",
+        )
     return redirect(url_for("settings.staff"))
 
 

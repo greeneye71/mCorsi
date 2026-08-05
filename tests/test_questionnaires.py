@@ -26,7 +26,7 @@ from mcorsi.services.questionnaires import (
 )
 
 
-PASSWORD = "PasswordMoltoSicura!"
+PASSWORD = "PasswordMoltoSicura1!"
 
 
 def _user(role: str, email: str) -> User:

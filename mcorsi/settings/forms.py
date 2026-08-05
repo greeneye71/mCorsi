@@ -2,6 +2,13 @@ from flask_wtf import FlaskForm
 from wtforms import BooleanField, EmailField, IntegerField, PasswordField, SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, ValidationError
 
+from ..services.passwords import PASSWORD_POLICY_MESSAGE, password_is_valid
+
+
+def validate_staff_password(_form, field):
+    if not password_is_valid(field.data or ""):
+        raise ValidationError(PASSWORD_POLICY_MESSAGE)
+
 
 class StaffCreateForm(FlaskForm):
     name = StringField("Nome", validators=[DataRequired(), Length(max=160)])
@@ -9,7 +16,10 @@ class StaffCreateForm(FlaskForm):
     role = SelectField(
         "Ruolo", choices=[("operator", "Operatore"), ("admin", "Amministratore")]
     )
-    password = PasswordField("Password iniziale", validators=[DataRequired(), Length(min=12, max=256)])
+    password = PasswordField(
+        "Password iniziale",
+        validators=[DataRequired(), Length(max=256), validate_staff_password],
+    )
     password_confirm = PasswordField(
         "Conferma password", validators=[DataRequired(), EqualTo("password")]
     )
@@ -17,7 +27,10 @@ class StaffCreateForm(FlaskForm):
 
 
 class StaffPasswordForm(FlaskForm):
-    password = PasswordField("Nuova password", validators=[DataRequired(), Length(min=12, max=256)])
+    password = PasswordField(
+        "Nuova password",
+        validators=[DataRequired(), Length(max=256), validate_staff_password],
+    )
     password_confirm = PasswordField(
         "Conferma password", validators=[DataRequired(), EqualTo("password")]
     )

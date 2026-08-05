@@ -39,7 +39,7 @@ def test_complete_course_journey_from_otp_to_certificate(app, client, monkeypatc
     participant_client = app.test_client()
     with app.app_context():
         admin = User(email="admin-e2e@example.it", profile_completed=True)
-        admin.set_password("PasswordMoltoSicura!")
+        admin.set_password("PasswordMoltoSicura1!")
         admin.roles.extend(
             [Role.query.filter_by(name="admin").one(), Role.query.filter_by(name="operator").one()]
         )
@@ -49,7 +49,7 @@ def test_complete_course_journey_from_otp_to_certificate(app, client, monkeypatc
 
     assert client.post(
         "/auth/login",
-        data={"email": "admin-e2e@example.it", "password": "PasswordMoltoSicura!"},
+        data={"email": "admin-e2e@example.it", "password": "PasswordMoltoSicura1!"},
     ).status_code == 302
     created = client.post(
         "/courses/new",

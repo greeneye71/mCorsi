@@ -30,7 +30,7 @@ button, input { font: inherit; }
 .user-nav form { margin: 0; }
 .user-label { color: var(--muted); font-size: .82rem; }
 .main-nav { display: flex; align-items: center; gap: .25rem; margin-left: auto; }
-.main-nav a { padding: .45rem .6rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .8rem; font-weight: 650; }
+.main-nav a { padding: .45rem .6rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .88rem; font-weight: 650; }
 .main-nav a:hover, .main-nav a.is-active { color: var(--brand-dark); background: #eaf2fa; }
 .page-shell { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 4rem; }
 h1, h2 { margin: 0; letter-spacing: -.035em; line-height: 1.12; }
@@ -262,7 +262,7 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
 .outbox-pending { color: #684d1d; background: #fff1d8; }
 .outbox-failed { color: #8a2b2b; background: #fbe3e3; }
 .settings-nav { display: flex; gap: .25rem; margin-bottom: 1.5rem; padding-bottom: .65rem; border-bottom: 1px solid var(--line); }
-.settings-nav a { padding: .45rem .7rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .8rem; font-weight: 680; }
+.settings-nav a { padding: .45rem .7rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .86rem; font-weight: 680; }
 .settings-nav a:hover, .settings-nav a.is-active { color: var(--brand-dark); background: #eaf2fa; }
 .configuration-heading { margin-bottom: 1rem; }
 .configuration-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
@@ -290,7 +290,7 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
   .topbar { min-height: 4rem; }
   .user-label { display: none; }
   .main-nav { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; justify-content: flex-start; overflow-x: auto; padding: .45rem .5rem max(.45rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(255,255,255,.98); box-shadow: 0 -5px 18px rgba(22,40,68,.08); }
-  .main-nav a { padding: .55rem .4rem; font-size: .72rem; }
+  .main-nav a { padding: .55rem .45rem; font-size: .78rem; }
   .page-shell { padding-top: 1.6rem; }
   .auth-layout, .content-grid { grid-template-columns: 1fr; }
   .auth-layout { gap: 1.25rem; }

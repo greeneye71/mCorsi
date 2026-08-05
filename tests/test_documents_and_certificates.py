@@ -41,7 +41,7 @@ def _user(role: str, email: str, *, first_name="", last_name="") -> User:
         profile_completed=True,
     )
     if role in {"admin", "operator"}:
-        user.set_password("PasswordMoltoSicura!")
+        user.set_password("PasswordMoltoSicura1!")
     user.roles.append(Role.query.filter_by(name=role).one())
     if role == "admin":
         user.roles.append(Role.query.filter_by(name="operator").one())

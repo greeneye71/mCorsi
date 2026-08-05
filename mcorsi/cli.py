@@ -17,6 +17,7 @@ from .services.audit import record_event
 from .services.backup import create_backup, restore_backup, verify_backup
 from .services.mcp_access import MCP_SCOPES, create_access_token
 from .services.notifications import deliver_pending, enqueue_reminders
+from .services.passwords import PASSWORD_POLICY_MESSAGE, password_is_valid
 from .services.versioning import ensure_system_version, version_information
 
 
@@ -26,9 +27,9 @@ ROLE_NAMES = ("admin", "operator", "participant", "company_contact", "service")
 def _prompt_password(label: str = "Password") -> str:
     while True:
         password = click.prompt(label, hide_input=True, confirmation_prompt=True)
-        if len(password) >= 12:
+        if password_is_valid(password):
             return password
-        click.echo("La password deve contenere almeno 12 caratteri.", err=True)
+        click.echo(PASSWORD_POLICY_MESSAGE, err=True)
 
 
 def ensure_roles() -> dict[str, Role]:

@@ -42,7 +42,7 @@ def _forms_workbook() -> bytes:
 
 def _admin() -> User:
     user = User(email="admin@example.it", first_name="Ada", profile_completed=True)
-    user.set_password("PasswordMoltoSicura!")
+    user.set_password("PasswordMoltoSicura1!")
     user.roles.extend(
         [Role.query.filter_by(name="admin").one(), Role.query.filter_by(name="operator").one()]
     )

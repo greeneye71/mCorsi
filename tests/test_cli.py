@@ -5,7 +5,7 @@ from mcorsi.models import User
 def test_admin_lifecycle(app, runner):
     result = runner.invoke(
         args=["admin", "create", "--email", "admin@example.it", "--name", "Giovanni"],
-        input="PasswordMoltoSicura!\nPasswordMoltoSicura!\n",
+        input="PasswordMoltoSicura1!\nPasswordMoltoSicura1!\n",
     )
     assert result.exit_code == 0, result.output
 
@@ -13,11 +13,11 @@ def test_admin_lifecycle(app, runner):
         user = User.query.filter_by(email="admin@example.it").one()
         assert user.has_role("admin", "operator")
         assert user.display_name == "Giovanni"
-        assert user.check_password("PasswordMoltoSicura!")
+        assert user.check_password("PasswordMoltoSicura1!")
 
     changed = runner.invoke(
         args=["admin", "set-password", "admin@example.it"],
-        input="PasswordNuovaSicura!\nPasswordNuovaSicura!\n",
+        input="PasswordNuovaSicura1!\nPasswordNuovaSicura1!\n",
     )
     assert changed.exit_code == 0, changed.output
 
@@ -43,7 +43,7 @@ def test_short_password_is_reprompted(runner):
         ),
     )
     assert result.exit_code == 0, result.output
-    assert "almeno 12 caratteri" in result.output
+    assert "almeno 8 caratteri" in result.output
 
 
 def test_bootstrap_admin_is_idempotent(app, runner):

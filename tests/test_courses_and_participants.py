@@ -7,7 +7,7 @@ from mcorsi.models import AdmissionRequest, Company, Course, Employment, Enrollm
 from mcorsi.services.courses import create_course, request_admission
 
 
-PASSWORD = "PasswordMoltoSicura!"
+PASSWORD = "PasswordMoltoSicura1!"
 
 
 def _make_user(app, email: str, role: str, *, first_name="", last_name="") -> str:

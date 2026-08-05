@@ -12,7 +12,7 @@ from mcorsi.services.courses import create_course
 from mcorsi.services.secrets import decrypt_secret
 
 
-PASSWORD = "PasswordMoltoSicura!"
+PASSWORD = "PasswordMoltoSicura1!"
 
 
 def _admin(app, email="admin@example.it") -> str:

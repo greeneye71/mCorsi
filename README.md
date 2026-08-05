@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.2.0 · versione database 1**
+**Versione applicazione 0.2.1 · versione database 1**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -160,7 +160,8 @@ python -m flask --app wsgi mcp token-list
 python -m flask --app wsgi version
 ```
 
-Le password devono contenere almeno 12 caratteri.
+Le password devono contenere almeno 8 caratteri, una lettera maiuscola, una
+minuscola, un numero e un carattere speciale.
 
 ## Versioni e migrazioni
 
