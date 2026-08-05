@@ -325,6 +325,7 @@ class Course(db.Model):
     topics = db.Column(db.Text, nullable=False, default="")
     code = db.Column(db.String(16), unique=True, nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
+    is_historical = db.Column(db.Boolean, nullable=False, default=False, index=True)
     creator_user_id = db.Column(
         db.String(36), db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

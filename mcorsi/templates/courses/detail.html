@@ -34,6 +34,7 @@
 
 <section class="panel spaced-panel">
   <div class="panel-heading"><div><p class="eyebrow">Valutazione</p><h2>Questionari</h2></div><a class="button button-primary" href="{{ url_for('questionnaires.create', course_id=course.id) }}">Nuovo questionario</a></div>
+  {% if course.is_historical %}<div class="status-card status-ok"><strong>Corso storico</strong><span>Ai fini dell'attestato la valutazione pregressa è considerata acquisita: non è richiesta la compilazione dei questionari.</span></div>{% endif %}
   {% if course.questionnaires %}<div class="record-list">{% for questionnaire in course.questionnaires %}<a class="record-row" href="{{ url_for('questionnaires.detail', questionnaire_id=questionnaire.id) }}"><span><strong>{{ questionnaire.title }}</strong><small>{{ questionnaire.questions|length }} domande · soglia {{ questionnaire.passing_percentage }}% · massimo {{ questionnaire.maximum_score }} punti</small></span><span class="badge badge-{{ 'open' if questionnaire.is_published else 'draft' }}">{{ 'Pubblicato' if questionnaire.is_published else 'Bozza' }}</span></a>{% endfor %}</div>
   {% else %}<div class="inline-empty"><p>Nessun questionario configurato.</p></div>{% endif %}
 </section>

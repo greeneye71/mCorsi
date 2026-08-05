@@ -65,6 +65,7 @@ def create_course(*, actor: User, data: dict) -> Course:
         topics=data.get("topics", "").strip(),
         code=generate_course_code(),
         status=data["status"],
+        is_historical=bool(data.get("is_historical", False)),
         creator_user_id=actor.id,
         referent_user_id=data["referent_user_id"],
         delivery_mode=data["delivery_mode"],

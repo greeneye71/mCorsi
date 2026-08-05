@@ -1,12 +1,16 @@
 # mCorsi
 
-**Versione applicazione 0.4.0 · versione database 2**
+**Versione applicazione 0.5.0 · versione database 3**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
 l'accesso di amministratori/operatori, anagrafiche di partecipanti e aziende,
 corsi e ammissioni, questionari, attestati PDF, importazione storico, portale
 aziendale, notifiche, server MCP e backup verificabile con ripristino.
+
+I corsi creati dall'importazione dello storico sono marcati come conclusi e
+pregressi: le presenze importate possono ricevere l'attestato senza ricostruire
+i questionari, dopo avere completato l'anagrafica e assegnato un modello DOCX.
 
 La specifica completa è in [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) e le
 decisioni tecniche in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
