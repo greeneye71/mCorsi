@@ -51,7 +51,8 @@ mcorsi/
 
 ## Ambienti
 
-- `development`: SQLite, debug esplicito, cookie non Secure solo su localhost;
+- `development`: SQLite, debugger web disattivato e cookie non Secure per la
+  rete di test fidata;
 - `testing`: database isolato, email e storage finti;
 - `production`: SQLite WAL sulla singola macchina iniziale, cookie Secure,
   proxy trusted e segreti da ambiente; PostgreSQL resta configurabile.
@@ -67,7 +68,7 @@ con una chiave master fornita dall'ambiente di esecuzione.
 
 mCorsi usa tre informazioni complementari:
 
-- versione applicativa semantica, attualmente `0.1.0`;
+- versione applicativa semantica, attualmente `0.1.1`;
 - versione intera dello schema, attualmente `1`, conservata nella riga unica
   della tabella `system_version`;
 - revisione Alembic, che identifica esattamente l'ultima migrazione applicata.

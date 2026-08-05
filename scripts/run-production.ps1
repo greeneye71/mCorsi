@@ -10,7 +10,7 @@ if (-not $PythonExecutable) {
     $PythonExecutable = if (Test-Path -LiteralPath $VirtualEnvPython) { $VirtualEnvPython } else { "python" }
 }
 if (-not $ListenAddress) {
-    $WebHost = if ($env:MCORSI_WEB_HOST) { $env:MCORSI_WEB_HOST } else { "127.0.0.1" }
+    $WebHost = if ($env:MCORSI_WEB_HOST) { $env:MCORSI_WEB_HOST } else { "0.0.0.0" }
     $WebPort = if ($env:MCORSI_WEB_PORT) { $env:MCORSI_WEB_PORT } else { "8000" }
     $ListenAddress = "${WebHost}:${WebPort}"
 }

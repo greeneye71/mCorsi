@@ -12,6 +12,8 @@ $EnvironmentNames = @(
     "MCORSI_ENCRYPTION_KEY",
     "MCORSI_OTP_PEPPER",
     "MCORSI_MCP_TOKEN_PEPPER",
+    "MCORSI_WEB_HOST",
+    "MCORSI_WEB_PORT",
     "MCORSI_MCP_PORT",
     "MCORSI_MCP_ALLOWED_HOSTS"
 )
@@ -24,13 +26,15 @@ $env:MCORSI_SECRET_KEY = "smoke-test-secret-key-web"
 $env:MCORSI_ENCRYPTION_KEY = "smoke-test-encryption-key"
 $env:MCORSI_OTP_PEPPER = "smoke-test-otp-pepper"
 $env:MCORSI_MCP_TOKEN_PEPPER = "smoke-test-mcp-token-pepper"
+$env:MCORSI_WEB_HOST = "0.0.0.0"
+$env:MCORSI_WEB_PORT = "18000"
 $env:MCORSI_MCP_PORT = "18001"
 $env:MCORSI_MCP_ALLOWED_HOSTS = "127.0.0.1:18001,localhost:18001"
 $WebProcess = $null
 $McpProcess = $null
 Push-Location -LiteralPath $ProjectRoot
 try {
-    $WebProcess = Start-Process -FilePath $PythonExecutable -ArgumentList @("-m", "waitress", "--listen=127.0.0.1:18000", "--threads=2", "wsgi:app") -PassThru -WindowStyle Hidden
+    $WebProcess = Start-Process -FilePath $PythonExecutable -ArgumentList @("-m", "waitress", "--listen=0.0.0.0:18000", "--threads=2", "wsgi:app") -PassThru -WindowStyle Hidden
     $McpProcess = Start-Process -FilePath $PythonExecutable -ArgumentList @("mcp_server.py") -PassThru -WindowStyle Hidden
 
     $Ready = $false

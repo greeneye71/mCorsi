@@ -18,11 +18,16 @@ for /f "delims=0123456789" %%A in ("%PORTA%") do goto :porta_non_valida
 if %PORTA% LSS 1 goto :porta_non_valida
 if %PORTA% GTR 65535 goto :porta_non_valida
 
+set "INDIRIZZO=%~3"
+if "%INDIRIZZO%"=="" if /I "%MODALITA%"=="test" set "INDIRIZZO=%MCORSI_TEST_HOST%"
+if "%INDIRIZZO%"=="" if /I "%MODALITA%"=="produzione" set "INDIRIZZO=%MCORSI_WEB_HOST%"
+if "%INDIRIZZO%"=="" set "INDIRIZZO=0.0.0.0"
+
 echo.
 echo ========================================
 echo          Avvio di mCorsi
 echo ========================================
-echo Modalita: %MODALITA% - Porta: %PORTA%
+echo Modalita: %MODALITA% - Ascolto: %INDIRIZZO%:%PORTA%
 echo.
 
 if not exist ".venv\Scripts\python.exe" (
@@ -42,6 +47,8 @@ set "PYTHON=%CD%\.venv\Scripts\python.exe"
 if /I "%MODALITA%"=="test" set "MCORSI_ENV=development"
 if /I "%MODALITA%"=="produzione" set "MCORSI_ENV=production"
 set "MCORSI_PORT=%PORTA%"
+set "MCORSI_HOST=%INDIRIZZO%"
+set "MCORSI_WEB_HOST=%INDIRIZZO%"
 set "MCORSI_WEB_PORT=%PORTA%"
 
 echo [2/4] Controllo delle dipendenze...
@@ -57,25 +64,32 @@ echo [4/4] Controllo dell'amministratore...
 if errorlevel 1 goto :errore
 
 echo.
-echo mCorsi e disponibile all'indirizzo:
+echo mCorsi e disponibile su questo computer:
 echo.
 echo     http://127.0.0.1:%PORTA%
+echo.
+echo Dalla rete locale usa l'indirizzo IPv4 di questo computer:
+echo.
+echo     http://IP-DEL-COMPUTER:%PORTA%
+echo.
+echo Per trovare l'indirizzo esegui ipconfig in un altro Prompt.
+echo Se non risponde, autorizza la porta %PORTA% nel firewall Windows.
 echo.
 echo Premi CTRL+C per arrestare il programma.
 echo ========================================
 echo.
 if /I "%MODALITA%"=="produzione" (
-    "%PYTHON%" -m waitress --listen=127.0.0.1:%PORTA% --threads=4 wsgi:app
+    "%PYTHON%" -m waitress --listen=%INDIRIZZO%:%PORTA% --threads=4 wsgi:app
 ) else (
     "%PYTHON%" wsgi.py
 )
 goto :fine
 
 :uso
-echo Uso: avvia.cmd [test^|produzione] [porta]
+echo Uso: avvia.cmd [test^|produzione] [porta] [indirizzo]
 echo Esempi:
 echo   avvia.cmd test 5100
-echo   avvia.cmd produzione 8000
+echo   avvia.cmd produzione 8000 0.0.0.0
 exit /b 2
 
 :porta_non_valida

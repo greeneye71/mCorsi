@@ -24,7 +24,9 @@ ammissione → questionario → presenza → attestato → portale partecipante.
 - caricare una firma e generare un attestato di prova con LibreOffice;
 - impostare una destinazione backup su disco o sistema distinto;
 - installare i processi web, MCP, promemoria e backup;
-- pubblicare i due hostname Cloudflare verso le sole porte localhost;
+- pubblicare gli hostname Cloudflare verso le porte web e MCP previste;
+- limitare la regola firewall web al profilo/rete privata e non configurare
+  inoltri di porta sul router;
 - verificare che le porte configurate (predefinite: web 8000, MCP 8001) non
   siano già occupate;
 - creare un token MCP a privilegi minimi e provarlo dal client previsto;

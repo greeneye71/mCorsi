@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.1.0 · versione database 1**
+**Versione applicazione 0.1.1 · versione database 1**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -50,8 +50,20 @@ python -m flask --app wsgi admin create
 python wsgi.py
 ```
 
-Aprire `http://127.0.0.1:5100`. La password amministrativa viene richiesta in
-modo interattivo e non compare negli argomenti né nella cronologia della shell.
+Sul computer che esegue mCorsi aprire `http://127.0.0.1:5100`. Da un altro
+dispositivo della stessa rete usare `http://IP-DEL-COMPUTER:5100`, sostituendo
+l'indirizzo IPv4 mostrato da `ipconfig`. La password amministrativa viene
+richiesta in modo interattivo e non compare negli argomenti né nella cronologia
+della shell.
+
+Il web server ascolta per impostazione predefinita su `0.0.0.0`, quindi su tutte
+le interfacce di rete. Se Windows non mostra la richiesta automatica, occorre
+autorizzare la porta 5100 nel profilo **Privato** del firewall. Per limitare
+nuovamente l'accesso al solo computer locale usare:
+
+```cmd
+avvia.cmd test 5100 127.0.0.1
+```
 
 Il nuovo database predefinito è `instance/mcorsi-v2.sqlite3`: il file del
 prototipo precedente, se presente, non viene modificato.
@@ -71,8 +83,14 @@ virtuali, installare `python3-venv`. Anche qui la porta di test predefinita è
 5100 e può essere cambiata, per esempio con `sh avvia.sh test 5200`. La modalità
 `produzione` usa Waitress e la porta 8000, salvo diversa indicazione.
 
-Le porte predefinite possono anche essere configurate come variabili d'ambiente
-con `MCORSI_TEST_PORT`, `MCORSI_WEB_PORT` e `MCORSI_MCP_PORT`.
+Indirizzi e porte predefiniti possono anche essere configurati come variabili
+d'ambiente con `MCORSI_TEST_HOST`, `MCORSI_TEST_PORT`, `MCORSI_WEB_HOST`,
+`MCORSI_WEB_PORT` e `MCORSI_MCP_PORT`.
+
+L'accesso diretto dalla LAN in modalità `test` usa HTTP non cifrato: va impiegato
+soltanto su una rete privata fidata. La modalità `produzione` mantiene i cookie
+Secure e deve essere raggiunta in HTTPS tramite Cloudflare Tunnel o un reverse
+proxy TLS; non aprire la porta web sul router.
 
 ## Funzioni disponibili
 
@@ -185,7 +203,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 
 ## Produzione
 
-In produzione i processi web e MCP ascoltano soltanto su localhost; Cloudflare
-Tunnel inoltra il traffico HTTPS senza porte pubbliche in ingresso. La guida
-completa per Waitress, systemd, Utilità di pianificazione, backup e tunnel è in
+In produzione il server web ascolta anche sulla rete locale, mentre MCP rimane
+limitato a localhost. L'accesso autenticato di produzione richiede HTTPS;
+Cloudflare Tunnel lo fornisce senza porte pubbliche in ingresso sul router. La
+guida completa per Waitress, systemd, Utilità di pianificazione, backup e tunnel è in
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).

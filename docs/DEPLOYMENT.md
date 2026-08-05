@@ -2,16 +2,17 @@
 
 ## Scelta consigliata
 
-mCorsi ascolta per impostazione predefinita su `127.0.0.1:8000` tramite
-Waitress. Un tunnel Cloudflare gestito da remoto pubblica l'hostname HTTPS verso
-`http://localhost:8000`; non occorre aprire porte in ingresso sul router o sul
-firewall. Il database SQLite e lo storage devono risiedere su disco locale; i
-backup devono essere copiati su un secondo disco o destinazione sincronizzata.
+mCorsi ascolta per impostazione predefinita su `0.0.0.0:8000` tramite Waitress,
+quindi è raggiungibile dalla rete locale. Un tunnel Cloudflare gestito da remoto
+può continuare a pubblicare l'hostname HTTPS verso `http://localhost:8000`; non
+occorre aprire porte in ingresso sul router. Il database SQLite e lo storage
+devono risiedere su disco locale; i backup devono essere copiati su un secondo
+disco o destinazione sincronizzata.
 
 Le porte predefinite sono 5100 per test/sviluppo, 8000 per il web di produzione
-e 8001 per MCP. Si modificano con gli argomenti dei launcher o con
-`MCORSI_TEST_PORT`, `MCORSI_WEB_PORT` e `MCORSI_MCP_PORT`. I servizi restano
-vincolati a localhost: cambiare porta non significa esporli direttamente.
+e 8001 per MCP. Indirizzi e porte si modificano con gli argomenti dei launcher o
+con `MCORSI_TEST_HOST`, `MCORSI_TEST_PORT`, `MCORSI_WEB_HOST`,
+`MCORSI_WEB_PORT` e `MCORSI_MCP_PORT`. Il server MCP resta vincolato a localhost.
 
 ## Preparazione comune
 
@@ -35,7 +36,7 @@ MCORSI_DATABASE_URL=sqlite:////var/lib/mcorsi/mcorsi.sqlite3
 MCORSI_STORAGE_PATH=/var/lib/mcorsi/storage
 MCORSI_BACKUP_PATH=/var/backups/mcorsi
 MCORSI_LIBREOFFICE_PATH=/usr/bin/libreoffice
-MCORSI_WEB_HOST=127.0.0.1
+MCORSI_WEB_HOST=0.0.0.0
 MCORSI_WEB_PORT=8000
 MCORSI_MCP_PORT=8001
 MCORSI_MCP_PUBLIC_URL=https://mcp.example.it/mcp
@@ -62,20 +63,41 @@ Il comando manuale di produzione è:
 
 ```powershell
 .\scripts\run-production.ps1
-.\scripts\run-production.ps1 -ListenAddress "127.0.0.1:8080"
+.\scripts\run-production.ps1 -ListenAddress "0.0.0.0:8080"
 ```
 
 Da PowerShell avviato come amministratore si possono registrare web app,
 server MCP, promemoria e backup nell'Utilità di pianificazione:
 
 ```powershell
-.\deploy\windows\install-scheduled-tasks.ps1 -WebPort 8000 -McpPort 8001
+.\deploy\windows\install-scheduled-tasks.ps1 -WebHost 0.0.0.0 -WebPort 8000 -McpPort 8001
 ```
 
 Per una prova dal Prompt dei comandi, senza usare la porta Flask convenzionale
 5000, eseguire `avvia.cmd test 5100`. Su Linux l'equivalente è
 `sh avvia.sh test 5100`; per produzione si può usare
 `sh avvia.sh produzione 8080`.
+
+## Accesso dalla rete locale
+
+Dal computer server individuare l'indirizzo IPv4 con `ipconfig` su Windows o
+`hostname -I` su Linux. Dagli altri dispositivi aprire, per esempio,
+`http://192.168.1.20:5100`. Non usare letteralmente `0.0.0.0` nel browser: è
+l'indirizzo di ascolto del server, non l'indirizzo del computer.
+
+Su Windows può essere necessario creare una regola in ingresso, da PowerShell
+avviato come amministratore:
+
+```powershell
+New-NetFirewallRule -DisplayName "mCorsi test 5100" -Direction Inbound `
+  -Action Allow -Protocol TCP -LocalPort 5100 -Profile Private
+```
+
+Su Linux autorizzare la porta solo sulla rete privata usando il firewall della
+distribuzione. L'accesso HTTP diretto è previsto per la modalità `test` e solo
+su una rete fidata. In produzione i cookie sono marcati Secure: usare
+l'hostname HTTPS di Cloudflare Tunnel o un reverse proxy TLS e non inoltrare le
+porte 5100/8000 sul router.
 
 L'account selezionato deve avere il diritto di esecuzione all'avvio e accesso
 ai percorsi configurati. Per un server non presidiato è preferibile Linux con
@@ -177,7 +199,7 @@ Creare un backup, fermare il servizio, aggiornare codice e dipendenze, eseguire
 `MCORSI_ENCRYPTION_KEY` senza
 reinserire la password SMTP cifrata con la chiave precedente.
 
-La release 0.1.0 richiede la versione database 1. La tabella `system_version`
+La release 0.1.1 richiede la versione database 1. La tabella `system_version`
 registra questa compatibilità, mentre `alembic_version` identifica la migrazione
 esatta. Se i valori non sono allineati, `/health/ready` restituisce HTTP 503 e
 il servizio deve restare fuori dal tunnel finché `flask db upgrade` non termina
