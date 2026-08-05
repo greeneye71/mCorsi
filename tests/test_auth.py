@@ -85,9 +85,14 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
         data={"email": "admin@example.it", "password": "UnaPasswordSicura!"},
     )
     assert login.status_code == 302
+    configuration = client.get("/settings/")
+    assert configuration.status_code == 200
+    assert b"Email SMTP" in configuration.data
+    assert b'/settings/smtp' in configuration.data
     created = client.post(
         "/settings/staff",
         data={
+            "name": "Operatore Corsi",
             "email": "operatore@example.it",
             "role": "operator",
             "password": "PasswordIniziale!",
@@ -101,7 +106,14 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
     with app.app_context():
         operator = User.query.filter_by(email="operatore@example.it").one()
         operator_id = operator.id
+        assert operator.display_name == "Operatore Corsi"
         assert operator.check_password("PasswordIniziale!")
+
+    renamed = client.post(
+        f"/settings/staff/{operator_id}/name",
+        data={"name": "Referente Formazione"},
+    )
+    assert renamed.status_code == 302
 
     changed = client.post(
         f"/settings/staff/{operator_id}/password",
@@ -113,5 +125,6 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
     with app.app_context():
         db.session.expire_all()
         operator = db.session.get(User, operator_id)
+        assert operator.display_name == "Referente Formazione"
         assert operator.check_password("PasswordAggiornata!")
         assert operator.is_active is False

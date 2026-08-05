@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Configurazione · mCorsi{% endblock %}
+{% block content %}
+{% include "settings/_nav.html" %}
+<section class="page-heading configuration-heading">
+  <div>
+    <p class="eyebrow">Amministrazione</p>
+    <h1>Configurazione</h1>
+    <p class="lead">Account interni, invio email e automazioni del sistema.</p>
+  </div>
+</section>
+<section class="configuration-grid">
+  <a class="panel configuration-card" href="{{ url_for('settings.staff') }}">
+    <span class="configuration-icon" aria-hidden="true">U</span>
+    <div><h2>Utenti</h2><p>Operatori, amministratori, nomi e credenziali.</p></div>
+    <span class="configuration-status">{{ staff_count }} account</span>
+  </a>
+  <a class="panel configuration-card" href="{{ url_for('settings.smtp') }}">
+    <span class="configuration-icon" aria-hidden="true">@</span>
+    <div><h2>Email SMTP</h2><p>Server, mittente, sicurezza e invio di prova.</p></div>
+    <span class="badge {{ 'badge-approved' if smtp_configured else 'badge-in_progress' }}">{{ 'Configurato' if smtp_configured else 'Da configurare' }}</span>
+  </a>
+  <a class="panel configuration-card" href="{{ url_for('settings.notifications') }}">
+    <span class="configuration-icon" aria-hidden="true">R</span>
+    <div><h2>Promemoria</h2><p>Scadenze, notifiche automatiche e coda email.</p></div>
+    <span class="badge {{ 'badge-approved' if notifications_configured else 'badge-in_progress' }}">{{ 'Configurati' if notifications_configured else 'Predefiniti' }}</span>
+  </a>
+</section>
+{% endblock %}

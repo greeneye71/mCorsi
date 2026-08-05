@@ -88,12 +88,15 @@ def admin_group() -> None:
     """Gestione amministrativa degli utenti."""
 
 
-def _create_staff(email: str, role_name: str, password: str) -> User:
+def _create_staff(email: str, role_name: str, password: str, name: str) -> User:
     ensure_roles()
     normalized = normalize_email(email)
+    normalized_name = name.strip()
+    if not normalized_name:
+        raise click.ClickException("Il nome è obbligatorio.")
     if User.query.filter_by(email=normalized).first() is not None:
         raise click.ClickException("Esiste già un utente con questa email.")
-    user = User(email=normalized, profile_completed=True)
+    user = User(email=normalized, first_name=normalized_name, profile_completed=True)
     user.set_password(password)
     user.roles.append(Role.query.filter_by(name=role_name).one())
     if role_name == "admin":
@@ -103,7 +106,7 @@ def _create_staff(email: str, role_name: str, password: str) -> User:
         "admin.user_created_cli",
         target_type="user",
         target_id=user.id,
-        detail={"email": user.email, "role": role_name},
+        detail={"email": user.email, "name": user.first_name, "role": role_name},
     )
     try:
         db.session.commit()
@@ -115,18 +118,20 @@ def _create_staff(email: str, role_name: str, password: str) -> User:
 
 @admin_group.command("create")
 @click.option("--email", prompt=True, help="Email del nuovo amministratore.")
+@click.option("--name", prompt="Nome", help="Nome mostrato nell'interfaccia.")
 @with_appcontext
-def create_admin(email: str) -> None:
+def create_admin(email: str, name: str) -> None:
     """Crea un amministratore con ruolo operatore incluso."""
     password = _prompt_password()
-    user = _create_staff(email, "admin", password)
+    user = _create_staff(email, "admin", password, name)
     click.echo(f"Amministratore creato: {user.email}")
 
 
 @admin_group.command("bootstrap")
 @click.option("--email", default=None, help="Email del primo amministratore.")
+@click.option("--name", default=None, help="Nome mostrato nell'interfaccia.")
 @with_appcontext
-def bootstrap_admin(email: str | None) -> None:
+def bootstrap_admin(email: str | None, name: str | None) -> None:
     """Crea il primo amministratore solo quando non ne esiste già uno."""
     ensure_roles()
     existing = User.query.filter(User.roles.any(name="admin")).first()
@@ -134,18 +139,20 @@ def bootstrap_admin(email: str | None) -> None:
         click.echo(f"Amministratore già configurato: {existing.email}")
         return
     selected_email = email or click.prompt("Email del primo amministratore")
+    selected_name = name or click.prompt("Nome del primo amministratore")
     password = _prompt_password()
-    user = _create_staff(selected_email, "admin", password)
+    user = _create_staff(selected_email, "admin", password, selected_name)
     click.echo(f"Amministratore creato: {user.email}")
 
 
 @admin_group.command("create-operator")
 @click.option("--email", prompt=True, help="Email del nuovo operatore.")
+@click.option("--name", prompt="Nome", help="Nome mostrato nell'interfaccia.")
 @with_appcontext
-def create_operator(email: str) -> None:
+def create_operator(email: str, name: str) -> None:
     """Crea un operatore."""
     password = _prompt_password()
-    user = _create_staff(email, "operator", password)
+    user = _create_staff(email, "operator", password, name)
     click.echo(f"Operatore creato: {user.email}")
 
 
@@ -194,7 +201,7 @@ def list_users() -> None:
     for user in users:
         roles = ",".join(sorted(role.name for role in user.roles))
         state = "attivo" if user.is_active else "disabilitato"
-        click.echo(f"{user.email}\t{roles}\t{state}")
+        click.echo(f"{user.display_name}\t{user.email}\t{roles}\t{state}")
 
 
 @admin_group.command("generate-secrets")

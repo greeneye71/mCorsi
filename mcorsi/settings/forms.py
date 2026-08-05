@@ -4,6 +4,7 @@ from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange
 
 
 class StaffCreateForm(FlaskForm):
+    name = StringField("Nome", validators=[DataRequired(), Length(max=160)])
     email = EmailField("Email", validators=[DataRequired(), Email(), Length(max=320)])
     role = SelectField(
         "Ruolo", choices=[("operator", "Operatore"), ("admin", "Amministratore")]
@@ -21,6 +22,11 @@ class StaffPasswordForm(FlaskForm):
         "Conferma password", validators=[DataRequired(), EqualTo("password")]
     )
     submit = SubmitField("Reimposta password")
+
+
+class StaffNameForm(FlaskForm):
+    name = StringField("Nome", validators=[DataRequired(), Length(max=160)])
+    submit = SubmitField("Salva nome")
 
 
 class StaffStateForm(FlaskForm):

@@ -4,7 +4,7 @@ from mcorsi.models import User
 
 def test_admin_lifecycle(app, runner):
     result = runner.invoke(
-        args=["admin", "create", "--email", "admin@example.it"],
+        args=["admin", "create", "--email", "admin@example.it", "--name", "Giovanni"],
         input="PasswordMoltoSicura!\nPasswordMoltoSicura!\n",
     )
     assert result.exit_code == 0, result.output
@@ -12,6 +12,7 @@ def test_admin_lifecycle(app, runner):
     with app.app_context():
         user = User.query.filter_by(email="admin@example.it").one()
         assert user.has_role("admin", "operator")
+        assert user.display_name == "Giovanni"
         assert user.check_password("PasswordMoltoSicura!")
 
     changed = runner.invoke(
@@ -33,7 +34,7 @@ def test_admin_lifecycle(app, runner):
 
 def test_short_password_is_reprompted(runner):
     result = runner.invoke(
-        args=["admin", "create", "--email", "operator@example.it"],
+        args=["admin", "create", "--email", "operator@example.it", "--name", "Operatore"],
         input=(
             "troppocorta\n"
             "troppocorta\n"
@@ -47,7 +48,7 @@ def test_short_password_is_reprompted(runner):
 
 def test_bootstrap_admin_is_idempotent(app, runner):
     first = runner.invoke(
-        args=["admin", "bootstrap", "--email", "bootstrap@example.it"],
+        args=["admin", "bootstrap", "--email", "bootstrap@example.it", "--name", "Amministratore"],
         input="PasswordBootstrap1!\nPasswordBootstrap1!\n",
     )
     assert first.exit_code == 0, first.output

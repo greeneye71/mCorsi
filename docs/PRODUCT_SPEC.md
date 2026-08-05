@@ -1,7 +1,7 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.1.2
+Versione applicazione: 0.2.0
 Versione database: 1
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
@@ -40,6 +40,8 @@ server applicativo non espone direttamente porte pubbliche.
 
 - possiede anche tutte le funzioni di un operatore;
 - crea, abilita e disabilita operatori;
+- assegna e modifica il nome mostrato nell'interfaccia, mantenendo la mail come
+  username;
 - imposta o reimposta le password degli operatori;
 - gestisce SMTP, impostazioni generali e autorizzazioni MCP;
 - gestisce aziende, referenti aziendali e richieste di accesso aziendale;

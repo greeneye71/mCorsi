@@ -199,7 +199,7 @@ Creare un backup, fermare il servizio, aggiornare codice e dipendenze, eseguire
 `MCORSI_ENCRYPTION_KEY` senza
 reinserire la password SMTP cifrata con la chiave precedente.
 
-La release 0.1.2 richiede la versione database 1. La tabella `system_version`
+La release 0.2.0 richiede la versione database 1. La tabella `system_version`
 registra questa compatibilità, mentre `alembic_version` identifica la migrazione
 esatta. Se i valori non sono allineati, `/health/ready` restituisce HTTP 503 e
 il servizio deve restare fuori dal tunnel finché `flask db upgrade` non termina

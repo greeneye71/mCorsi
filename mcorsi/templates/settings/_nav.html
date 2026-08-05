@@ -1,0 +1,6 @@
+<nav class="settings-nav" aria-label="Configurazione">
+  <a class="{{ 'is-active' if request.endpoint == 'settings.index' else '' }}" href="{{ url_for('settings.index') }}">Riepilogo</a>
+  <a class="{{ 'is-active' if request.endpoint == 'settings.staff' else '' }}" href="{{ url_for('settings.staff') }}">Utenti</a>
+  <a class="{{ 'is-active' if request.endpoint == 'settings.smtp' else '' }}" href="{{ url_for('settings.smtp') }}">Email SMTP</a>
+  <a class="{{ 'is-active' if request.endpoint == 'settings.notifications' else '' }}" href="{{ url_for('settings.notifications') }}">Promemoria</a>
+</nav>

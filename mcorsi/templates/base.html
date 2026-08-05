@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#123f3a">
+  <meta name="theme-color" content="#1f5f99">
   <title>{% block title %}mCorsi{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
@@ -17,13 +17,13 @@
     {% if current_user.is_authenticated %}
       {% if current_user.has_role('admin', 'operator') %}
         <nav class="main-nav" aria-label="Navigazione principale">
-          <a href="{{ url_for('main.dashboard') }}">Panoramica</a>
-          <a href="{{ url_for('courses.index') }}">Corsi</a>
-          <a href="{{ url_for('participants.index') }}">Partecipanti</a>
-          <a href="{{ url_for('companies.index') }}">Aziende</a>
-          <a href="{{ url_for('documents.library') }}">Documenti</a>
-          <a href="{{ url_for('imports.index') }}">Importa</a>
-          {% if current_user.has_role('admin') %}<a href="{{ url_for('settings.staff') }}">Impostazioni</a>{% endif %}
+          <a class="{{ 'is-active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}">Panoramica</a>
+          <a class="{{ 'is-active' if request.blueprint == 'courses' else '' }}" href="{{ url_for('courses.index') }}">Corsi</a>
+          <a class="{{ 'is-active' if request.blueprint == 'participants' else '' }}" href="{{ url_for('participants.index') }}">Partecipanti</a>
+          <a class="{{ 'is-active' if request.blueprint == 'companies' else '' }}" href="{{ url_for('companies.index') }}">Aziende</a>
+          <a class="{{ 'is-active' if request.blueprint == 'documents' else '' }}" href="{{ url_for('documents.library') }}">Documenti</a>
+          <a class="{{ 'is-active' if request.blueprint == 'imports' else '' }}" href="{{ url_for('imports.index') }}">Importa</a>
+          {% if current_user.has_role('admin') %}<a class="{{ 'is-active' if request.blueprint == 'settings' else '' }}" href="{{ url_for('settings.index') }}">Configurazione</a>{% endif %}
         </nav>
       {% elif current_user.has_role('company_contact') and session.get('company_id') %}
         <nav class="main-nav participant-nav" aria-label="Navigazione principale"><a href="{{ url_for('company_portal.dashboard') }}">Attestati dipendenti</a></nav>

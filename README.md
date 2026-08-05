@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.1.2 · versione database 1**
+**Versione applicazione 0.2.0 · versione database 1**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -104,6 +104,7 @@ proxy TLS; non aprire la porta web sul router.
 - accesso partecipanti tramite OTP email a uso singolo;
 - completamento autonomo del profilo e dell'azienda;
 - configurazione SMTP amministrativa con password cifrata;
+- nomi visualizzati per operatori e amministratori, distinti dalla mail di accesso;
 - builder per questionari a scelta singola o multipla;
 - punteggi, soglia configurabile e massimo tre tentativi;
 - blocco delle modifiche dopo il primo tentativo e snapshot degli esiti;
@@ -126,8 +127,8 @@ Il partecipante non vede le soluzioni e può effettuare al massimo tre tentativi
 
 ## Configurazione email e OTP
 
-Dopo l'accesso come amministratore aprire **Impostazioni → Configurazione
-email** e indicare server, porta, credenziali e mittente SMTP. Il pulsante
+Dal menu principale aprire **Configurazione → Email SMTP** e indicare server,
+porta, credenziali e mittente. Il pulsante
 “Salva e invia prova” verifica immediatamente i parametri.
 
 I codici hanno 6 cifre, durano 10 minuti, sono utilizzabili una sola volta e

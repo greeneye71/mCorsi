@@ -13,12 +13,29 @@ from .forms import (
     RunNotificationsForm,
     SmtpSettingsForm,
     StaffCreateForm,
+    StaffNameForm,
     StaffPasswordForm,
     StaffStateForm,
 )
 
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
+
+
+@settings_bp.get("/")
+@admin_required
+def index():
+    smtp_configuration = db.session.get(SmtpConfiguration, 1)
+    notification_configuration = db.session.get(NotificationConfiguration, 1)
+    staff_count = User.query.filter(
+        User.roles.any(Role.name.in_(["admin", "operator"]))
+    ).count()
+    return render_template(
+        "settings/index.html",
+        smtp_configured=bool(smtp_configuration and smtp_configuration.host),
+        notifications_configured=notification_configuration is not None,
+        staff_count=staff_count,
+    )
 
 
 @settings_bp.route("/staff", methods=["GET", "POST"])
@@ -30,7 +47,11 @@ def staff():
         if User.query.filter_by(email=email).first():
             form.email.errors.append("Esiste già un account con questa email.")
         else:
-            user = User(email=email, profile_completed=True)
+            user = User(
+                email=email,
+                first_name=form.name.data.strip(),
+                profile_completed=True,
+            )
             user.set_password(form.password.data)
             user.roles.append(Role.query.filter_by(name=form.role.data).one())
             if form.role.data == "admin":
@@ -42,7 +63,7 @@ def staff():
                 actor=current_user,
                 target_type="user",
                 target_id=user.id,
-                detail={"email": email, "role": form.role.data},
+                detail={"email": email, "name": user.first_name, "role": form.role.data},
             )
             db.session.commit()
             flash("Account creato.", "success")
@@ -55,10 +76,35 @@ def staff():
     return render_template(
         "settings/staff.html",
         form=form,
+        name_form=StaffNameForm(),
         password_form=StaffPasswordForm(),
         state_form=StaffStateForm(),
         users=users,
     )
+
+
+@settings_bp.post("/staff/<user_id>/name")
+@admin_required
+def staff_name(user_id: str):
+    user = db.get_or_404(User, user_id)
+    if not user.has_role("admin", "operator"):
+        return redirect(url_for("settings.staff"))
+    form = StaffNameForm()
+    if form.validate_on_submit():
+        user.first_name = form.name.data.strip()
+        user.last_name = ""
+        record_event(
+            "admin.user_name_changed_web",
+            actor=current_user,
+            target_type="user",
+            target_id=user.id,
+            detail={"name": user.first_name},
+        )
+        db.session.commit()
+        flash(f"Nome aggiornato per {user.email}.", "success")
+    else:
+        flash("Inserisci un nome valido.", "error")
+    return redirect(url_for("settings.staff"))
 
 
 @settings_bp.post("/staff/<user_id>/password")

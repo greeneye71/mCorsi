@@ -68,7 +68,7 @@ con una chiave master fornita dall'ambiente di esecuzione.
 
 mCorsi usa tre informazioni complementari:
 
-- versione applicativa semantica, attualmente `0.1.2`;
+- versione applicativa semantica, attualmente `0.2.0`;
 - versione intera dello schema, attualmente `1`, conservata nella riga unica
   della tabella `system_version`;
 - revisione Alembic, che identifica esattamente l'ultima migrazione applicata.
