@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.4 · versione database 4**
+**Versione applicazione 0.5.5 · versione database 4**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -51,7 +51,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
-# Sostituire i quattro segreti di esempio con valori distinti generati casualmente.
+# Sostituire i cinque segreti di esempio con i valori generati dal comando dedicato.
 python -m flask --app wsgi init-db
 python -m flask --app wsgi admin create
 python wsgi.py
@@ -174,16 +174,17 @@ I codici hanno 6 cifre, durano 10 minuti, sono utilizzabili una sola volta e
 vengono bloccati dopo 5 errori. Il database conserva soltanto un hash HMAC del
 codice, mai il valore inviato via email.
 
-Prima della produzione configurare quattro segreti lunghi e distinti:
+Prima della produzione configurare cinque segreti lunghi e distinti:
 
 ```text
 MCORSI_SECRET_KEY=...
 MCORSI_ENCRYPTION_KEY=...
+MCORSI_BACKUP_ENCRYPTION_KEY=...
 MCORSI_OTP_PEPPER=...
 MCORSI_MCP_TOKEN_PEPPER=...
 ```
 
-L'applicazione rifiuta l'avvio in produzione se le quattro chiavi non sono
+L'applicazione rifiuta l'avvio in produzione se le cinque chiavi non sono
 configurate separatamente e con almeno 32 caratteri. `MCORSI_ENCRYPTION_KEY`
 deve inoltre essere una chiave Fernet valida; `python -m mcorsi.generate_secrets`
 la genera nel formato corretto anche prima che l'applicazione sia configurata.
@@ -222,14 +223,18 @@ se la versione del database non coincide con quella richiesta dal codice.
 ## Backup
 
 Il backup contiene una copia consistente di SQLite, lo storage privato e un
-manifest con checksum SHA-256. La destinazione deve idealmente essere un disco
-o percorso sincronizzato distinto dalla macchina applicativa.
+manifest con checksum SHA-256, interamente protetti con cifratura autenticata
+AES-256-GCM. La destinazione deve idealmente essere un disco o percorso
+sincronizzato distinto dalla macchina applicativa. La chiave dedicata
+`MCORSI_BACKUP_ENCRYPTION_KEY` va custodita separatamente e mai nella cartella
+dei backup.
 
 ```powershell
 python -m flask --app wsgi backup create
 python -m flask --app wsgi backup list
 python -m flask --app wsgi backup verify instance\backups\nome.mcbackup
 python -m flask --app wsgi backup restore instance\backups\nome.mcbackup --server-stopped
+python -m flask --app wsgi backup encrypt-legacy vecchio.mcbackup
 ```
 
 Impostare `MCORSI_BACKUP_PATH` per cambiare destinazione. Il piano operativo

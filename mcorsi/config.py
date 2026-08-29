@@ -40,6 +40,8 @@ class BaseConfig:
     BACKUP_PATH = os.environ.get(
         "MCORSI_BACKUP_PATH", str(INSTANCE_DIR / "backups")
     )
+    BACKUP_ENCRYPTION_KEY = os.environ.get("MCORSI_BACKUP_ENCRYPTION_KEY", "")
+    BACKUP_DECRYPTION_KEYS = os.environ.get("MCORSI_BACKUP_DECRYPTION_KEYS", "")
     BACKUP_RETENTION_COUNT = int(os.environ.get("MCORSI_BACKUP_RETENTION_COUNT", "30"))
     MAX_CONTENT_LENGTH = int(os.environ.get("MCORSI_MAX_UPLOAD_BYTES", 20 * 1024 * 1024))
     LIBREOFFICE_PATH = os.environ.get("MCORSI_LIBREOFFICE_PATH", "")

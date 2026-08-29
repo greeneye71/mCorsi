@@ -10,11 +10,15 @@ $EnvironmentNames = @(
     "MCORSI_ENV",
     "MCORSI_SECRET_KEY",
     "MCORSI_ENCRYPTION_KEY",
+    "MCORSI_ENCRYPTION_PREVIOUS_KEYS",
+    "MCORSI_LEGACY_ENCRYPTION_KEY",
     "MCORSI_OTP_PEPPER",
     "MCORSI_MCP_TOKEN_PEPPER",
     "MCORSI_DATABASE_URL",
     "MCORSI_STORAGE_PATH",
     "MCORSI_BACKUP_PATH",
+    "MCORSI_BACKUP_ENCRYPTION_KEY",
+    "MCORSI_BACKUP_DECRYPTION_KEYS",
     "MCORSI_WEB_HOST",
     "MCORSI_WEB_PORT",
     "MCORSI_MCP_PORT",
@@ -27,6 +31,8 @@ foreach ($Name in $EnvironmentNames) {
 $env:MCORSI_ENV = "production"
 $env:MCORSI_SECRET_KEY = "smoke-test-secret-key-web-000000000001"
 $env:MCORSI_ENCRYPTION_KEY = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+$env:MCORSI_ENCRYPTION_PREVIOUS_KEYS = ""
+$env:MCORSI_LEGACY_ENCRYPTION_KEY = ""
 $env:MCORSI_OTP_PEPPER = "smoke-test-otp-pepper-000000000000003"
 $env:MCORSI_MCP_TOKEN_PEPPER = "smoke-test-mcp-token-pepper-000000004"
 $env:MCORSI_WEB_HOST = "0.0.0.0"
@@ -39,6 +45,8 @@ $SmokeDatabase = (Join-Path $SmokeRoot "smoke.sqlite3").Replace("\", "/")
 $env:MCORSI_DATABASE_URL = "sqlite:///$SmokeDatabase"
 $env:MCORSI_STORAGE_PATH = Join-Path $SmokeRoot "storage"
 $env:MCORSI_BACKUP_PATH = Join-Path $SmokeRoot "backups"
+$env:MCORSI_BACKUP_ENCRYPTION_KEY = "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI="
+$env:MCORSI_BACKUP_DECRYPTION_KEYS = ""
 $WebProcess = $null
 $McpProcess = $null
 Push-Location -LiteralPath $ProjectRoot

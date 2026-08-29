@@ -19,7 +19,7 @@ server MCP rimane vincolato a localhost.
 1. Installare Python 3.11+, LibreOffice e `cloudflared`.
 2. Creare l'ambiente virtuale e installare `requirements.txt`.
 3. Copiare `.env.example` in `.env`, generare i segreti con
-   `python -m mcorsi.generate_secrets` e sostituire i quattro valori di esempio.
+   `python -m mcorsi.generate_secrets` e sostituire i cinque valori di esempio.
 4. Impostare percorsi assoluti per database, storage e backup.
 5. Eseguire `python -m flask --app wsgi init-db` e creare l'amministratore.
 6. Verificare `http://127.0.0.1:5100/health/ready` dopo l'avvio.
@@ -30,6 +30,7 @@ Esempio Linux per `/etc/mcorsi/mcorsi.env`:
 MCORSI_ENV=production
 MCORSI_SECRET_KEY=...
 MCORSI_ENCRYPTION_KEY=...
+MCORSI_BACKUP_ENCRYPTION_KEY=...
 MCORSI_OTP_PEPPER=...
 MCORSI_MCP_TOKEN_PEPPER=...
 MCORSI_DATABASE_URL=sqlite:////var/lib/mcorsi/mcorsi.sqlite3
@@ -164,9 +165,11 @@ Documentazione ufficiale aggiornata: [setup Cloudflare Tunnel](https://developer
 
 ## Backup e ripristino
 
-Il backup notturno produce un archivio `.mcbackup` verificato con SHA-256.
-Conservare più versioni e provarne il ripristino almeno ogni tre mesi. Per
-ripristinare:
+Il backup notturno produce un archivio `.mcbackup` cifrato e autenticato a
+blocchi con AES-256-GCM, oltre ai checksum SHA-256 interni. Custodire
+`MCORSI_BACKUP_ENCRYPTION_KEY` in un password manager o nel sistema dei segreti
+del servizio, mai nella destinazione dei backup. Conservare più versioni e
+provarne il ripristino almeno ogni tre mesi. Per ripristinare:
 
 1. fermare `mcorsi`, il timer notifiche e qualunque altro processo applicativo;
 2. verificare l'archivio;
@@ -179,6 +182,21 @@ python -m flask --app wsgi backup restore /percorso/backup.mcbackup --server-sto
 python -m flask --app wsgi db upgrade
 python -m flask --app wsgi version
 ```
+
+I backup creati prima della 0.5.5 sono riconosciuti ma richiedono una scelta
+esplicita. È preferibile crearne una copia cifrata, senza eliminare l'originale:
+
+```bash
+python -m flask --app wsgi backup encrypt-legacy /percorso/vecchio.mcbackup
+```
+
+Per la sola verifica o per un ripristino urgente sono disponibili le opzioni
+`--allow-legacy-unencrypted`. Dopo aver verificato la copia cifrata, rimuovere
+gli archivi in chiaro dalla destinazione con una procedura controllata.
+
+Per ruotare la chiave dei backup, impostare la nuova chiave primaria e spostare
+quella precedente in `MCORSI_BACKUP_DECRYPTION_KEYS`. Mantenerla finché tutti i
+backup che la usano sono scaduti o sono stati convertiti, quindi rimuoverla.
 
 Prima della sostituzione il comando crea automaticamente un ulteriore backup
 di sicurezza dello stato corrente. Dopo ogni creazione vengono conservati gli
@@ -230,9 +248,11 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.4 richiede la versione database 4. Non introduce modifiche allo
-schema; rende obbligatoria una chiave Fernet valida e offre la procedura di
-rotazione descritta sopra. La migrazione della release 0.5.3 introduce la
+La release 0.5.5 richiede la versione database 4. Prima dell'aggiornamento è
+obbligatorio generare e configurare `MCORSI_BACKUP_ENCRYPTION_KEY`; la chiave
+deve essere custodita separatamente dagli archivi. La release non modifica lo
+schema. La 0.5.4 rende obbligatoria una chiave Fernet valida per i segreti SMTP
+e offre la relativa procedura di rotazione. La migrazione della release 0.5.3 introduce la
 verifica esplicita delle associazioni tra partecipanti e aziende, mantenendo
 come verificate le associazioni già presenti. La precedente migrazione identifica i
 corsi storici e aggiorna anche quelli già importati, consentendo l'emissione

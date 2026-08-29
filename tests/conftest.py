@@ -22,6 +22,7 @@ def app():
         {
             "SECRET_KEY": "testing-secret",
             "ENCRYPTION_KEY": "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+            "BACKUP_ENCRYPTION_KEY": "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI=",
             "SQLALCHEMY_DATABASE_URI": f"sqlite:///{database_path.as_posix()}",
             "PRIVATE_STORAGE_PATH": str(storage_path),
             "BACKUP_PATH": str(backup_path),

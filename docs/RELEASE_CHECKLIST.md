@@ -18,11 +18,12 @@ ammissione → questionario → presenza → attestato → portale partecipante.
 
 ## Prima messa in esercizio
 
-- generare e conservare separatamente i quattro segreti;
+- generare e conservare separatamente i cinque segreti;
 - creare l'amministratore e verificare la gestione operatori dalla webapp;
 - configurare SMTP e inviare una mail di prova reale;
 - caricare una firma e generare un attestato di prova con LibreOffice;
 - impostare una destinazione backup su disco o sistema distinto;
+- custodire `MCORSI_BACKUP_ENCRYPTION_KEY` fuori dalla destinazione dei backup;
 - installare i processi web, MCP, promemoria e backup;
 - pubblicare gli hostname Cloudflare verso le porte web e MCP previste;
 - limitare la regola firewall web al profilo/rete privata e non configurare

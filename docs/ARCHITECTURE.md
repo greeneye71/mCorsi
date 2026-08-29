@@ -91,5 +91,7 @@ password, OTP, credenziali SMTP e risposte corrette non sono esposti.
 
 Il modulo backup usa `sqlite3.Connection.backup()` per la copia consistente del
 database e costruisce un archivio versionato con storage privato e manifest dei
-checksum. Il ripristino è volutamente escluso dall'interfaccia web per ridurre
-il rischio di sovrascritture accidentali.
+checksum. Il contenitore viene poi cifrato a blocchi con AES-256-GCM, così da
+autenticare anche backup di grandi dimensioni senza caricarli interamente in
+memoria. Il ripristino è volutamente escluso dall'interfaccia web per ridurre il
+rischio di sovrascritture accidentali.

@@ -34,6 +34,7 @@ def create_app(config_name: str = "production", test_config: dict | None = None)
         configured_secrets = {
             "MCORSI_SECRET_KEY": app.config["SECRET_KEY"],
             "MCORSI_ENCRYPTION_KEY": app.config["ENCRYPTION_KEY"],
+            "MCORSI_BACKUP_ENCRYPTION_KEY": app.config["BACKUP_ENCRYPTION_KEY"],
             "MCORSI_OTP_PEPPER": app.config["OTP_PEPPER"],
             "MCORSI_MCP_TOKEN_PEPPER": app.config["MCP_TOKEN_PEPPER"],
         }
@@ -44,6 +45,8 @@ def create_app(config_name: str = "production", test_config: dict | None = None)
         )
         if not is_fernet_key(app.config["ENCRYPTION_KEY"]):
             insecure.append("MCORSI_ENCRYPTION_KEY")
+        if not is_fernet_key(app.config["BACKUP_ENCRYPTION_KEY"]):
+            insecure.append("MCORSI_BACKUP_ENCRYPTION_KEY")
         previous_keys = app.config.get("ENCRYPTION_PREVIOUS_KEYS", "")
         if any(
             not is_fernet_key(value.strip())
@@ -51,6 +54,13 @@ def create_app(config_name: str = "production", test_config: dict | None = None)
             if value.strip()
         ):
             insecure.append("MCORSI_ENCRYPTION_PREVIOUS_KEYS")
+        backup_decryption_keys = app.config.get("BACKUP_DECRYPTION_KEYS", "")
+        if any(
+            not is_fernet_key(value.strip())
+            for value in backup_decryption_keys.split(",")
+            if value.strip()
+        ):
+            insecure.append("MCORSI_BACKUP_DECRYPTION_KEYS")
         if len(set(configured_secrets.values())) != len(configured_secrets):
             insecure.extend(configured_secrets)
         insecure = sorted(set(insecure))

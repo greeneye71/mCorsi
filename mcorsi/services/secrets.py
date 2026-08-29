@@ -16,6 +16,7 @@ def generate_secret_values() -> dict[str, str]:
     return {
         "MCORSI_SECRET_KEY": python_secrets.token_urlsafe(48),
         "MCORSI_ENCRYPTION_KEY": Fernet.generate_key().decode("ascii"),
+        "MCORSI_BACKUP_ENCRYPTION_KEY": Fernet.generate_key().decode("ascii"),
         "MCORSI_OTP_PEPPER": python_secrets.token_urlsafe(48),
         "MCORSI_MCP_TOKEN_PEPPER": python_secrets.token_urlsafe(48),
     }

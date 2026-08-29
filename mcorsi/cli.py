@@ -13,7 +13,12 @@ from sqlalchemy.exc import IntegrityError
 from .extensions import db
 from .models import McpAccessToken, Role, SmtpConfiguration, User, normalize_email
 from .services.audit import record_event
-from .services.backup import create_backup, restore_backup, verify_backup
+from .services.backup import (
+    create_backup,
+    encrypt_legacy_backup,
+    restore_backup,
+    verify_backup,
+)
 from .services.mcp_access import MCP_SCOPES, create_access_token
 from .services.notifications import deliver_pending, enqueue_reminders
 from .services.passwords import PASSWORD_POLICY_MESSAGE, password_is_valid
@@ -337,16 +342,32 @@ def backup_create(destination: Path | None) -> None:
 
 @backup_group.command("verify")
 @click.argument("archive", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--allow-legacy-unencrypted", is_flag=True)
 @with_appcontext
-def backup_verify(archive: Path) -> None:
+def backup_verify(archive: Path, allow_legacy_unencrypted: bool) -> None:
     """Verifica struttura e checksum di un backup."""
     try:
-        manifest = verify_backup(archive)
+        manifest = verify_backup(
+            archive, allow_legacy_unencrypted=allow_legacy_unencrypted
+        )
     except (OSError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(
         f"Backup valido: {manifest['created_at']} · {len(manifest['files'])} file"
     )
+
+
+@backup_group.command("encrypt-legacy")
+@click.argument("archive", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--destination", type=click.Path(path_type=Path), default=None)
+@with_appcontext
+def backup_encrypt_legacy(archive: Path, destination: Path | None) -> None:
+    """Crea una copia cifrata di un backup legacy senza cancellare l'originale."""
+    try:
+        output = encrypt_legacy_backup(archive, destination)
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Backup legacy convertito e verificato: {output}")
 
 
 @backup_group.command("list")
@@ -369,15 +390,22 @@ def backup_list() -> None:
     is_flag=True,
     help="Conferma che web server, worker e scheduler sono fermi.",
 )
+@click.option("--allow-legacy-unencrypted", is_flag=True)
 @with_appcontext
-def backup_restore(archive: Path, server_stopped: bool) -> None:
+def backup_restore(
+    archive: Path, server_stopped: bool, allow_legacy_unencrypted: bool
+) -> None:
     """Ripristina database e storage creando prima un backup di sicurezza."""
     if not server_stopped:
         raise click.ClickException(
             "Ferma web server e processi pianificati, poi ripeti con --server-stopped."
         )
     try:
-        manifest = restore_backup(archive, safety_backup=True)
+        manifest = restore_backup(
+            archive,
+            safety_backup=True,
+            allow_legacy_unencrypted=allow_legacy_unencrypted,
+        )
     except (OSError, ValueError, RuntimeError, zipfile.BadZipFile) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"Ripristino completato dal backup del {manifest['created_at']}.")

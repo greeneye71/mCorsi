@@ -83,7 +83,8 @@ def test_generate_secrets_emits_a_real_fernet_key(runner):
     assert result.exit_code == 0
     values = dict(line.split("=", 1) for line in result.output.strip().splitlines())
     Fernet(values["MCORSI_ENCRYPTION_KEY"].encode("ascii"))
-    assert len(set(values.values())) == 4
+    Fernet(values["MCORSI_BACKUP_ENCRYPTION_KEY"].encode("ascii"))
+    assert len(set(values.values())) == 5
 
 
 def test_production_rejects_a_passphrase_as_encryption_key():
@@ -93,6 +94,20 @@ def test_production_rejects_a_passphrase_as_encryption_key():
             {
                 "SECRET_KEY": "s" * 40,
                 "ENCRYPTION_KEY": "questa-non-e-una-chiave-fernet-ma-e-lunga",
+                "OTP_PEPPER": "o" * 40,
+                "MCP_TOKEN_PEPPER": "m" * 40,
+            },
+        )
+
+
+def test_production_requires_a_dedicated_backup_key():
+    with pytest.raises(RuntimeError, match="MCORSI_BACKUP_ENCRYPTION_KEY"):
+        create_app(
+            "production",
+            {
+                "SECRET_KEY": "s" * 40,
+                "ENCRYPTION_KEY": PRIMARY_KEY,
+                "BACKUP_ENCRYPTION_KEY": "",
                 "OTP_PEPPER": "o" * 40,
                 "MCP_TOKEN_PEPPER": "m" * 40,
             },

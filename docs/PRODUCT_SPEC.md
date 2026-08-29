@@ -1,7 +1,7 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.5.4
+Versione applicazione: 0.5.5
 Versione database: 4
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
@@ -376,7 +376,8 @@ Le password sono richieste con input nascosto e mai passate come argomento CLI.
 ### Backup e ripristino
 
 Il backup comprende database SQLite, documenti dei corsi, modelli, firme,
-attestati, file di importazione e un manifest con versione e checksum.
+attestati, file di importazione e un manifest con versione e checksum. L'intero
+archivio è cifrato e autenticato a blocchi con AES-256-GCM e una chiave dedicata.
 
 - creazione manuale da CLI e pagina amministrativa;
 - pianificazione giornaliera facoltativa tramite worker;
@@ -384,6 +385,7 @@ attestati, file di importazione e un manifest con versione e checksum.
 - nome archivio con data/ora e identificativo installazione;
 - uso dell'API backup di SQLite per ottenere una copia coerente a sistema attivo;
 - verifica automatica dell'archivio dopo la creazione;
+- conversione non distruttiva dei backup legacy non cifrati;
 - conservazione configurabile, inizialmente ultimi 30 backup;
 - elenco e verifica disponibili da CLI;
 - ripristino solo da CLI, con applicazione ferma, conferma esplicita e copia di
