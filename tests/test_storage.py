@@ -120,3 +120,30 @@ def test_macro_payload_is_rejected_even_with_docx_extension(app):
                 actor=_actor(),
                 category="templates",
             )
+
+
+def test_office_xml_entities_are_rejected(app):
+    output = BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types />")
+        archive.writestr(
+            "word/document.xml",
+            """<!DOCTYPE document [<!ENTITY payload "contenuto">]>
+            <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              &payload;
+            </w:document>""",
+        )
+
+    with app.app_context():
+        with pytest.raises(StorageError, match="documento ZIP valido"):
+            save_upload(
+                FileStorage(
+                    stream=BytesIO(output.getvalue()),
+                    filename="entita.docx",
+                    content_type=DOCX_MIME,
+                ),
+                actor=_actor(),
+                category="templates",
+            )
+
+        assert StoredFile.query.count() == 0

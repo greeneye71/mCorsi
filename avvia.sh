@@ -60,7 +60,7 @@ fi
 python_executable="$project_root/.venv/bin/python"
 
 printf '[2/4] Controllo delle dipendenze...\n'
-"$python_executable" -m pip install --disable-pip-version-check -q -r requirements.txt
+"$python_executable" -m pip install --disable-pip-version-check -q --require-hashes -r requirements.lock
 
 printf '[3/4] Aggiornamento del database...\n'
 "$python_executable" -m flask --app wsgi init-db

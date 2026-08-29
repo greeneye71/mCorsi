@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 
-PASSWORD_POLICY_MESSAGE = (
+# Questo è il messaggio della policy, non una credenziale incorporata.
+PASSWORD_POLICY_MESSAGE = (  # nosec B105
     "La password deve avere da 12 a 128 caratteri, contenere maiuscole, "
     "minuscole, numeri e caratteri speciali e non essere una password comune."
 )

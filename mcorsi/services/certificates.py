@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
+# Il binario LibreOffice viene validato e avviato senza shell.
+import subprocess  # nosec B404
 from calendar import monthrange
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -160,7 +161,8 @@ def convert_docx_to_pdf(docx_path: Path, output_dir: Path) -> Path:
         str(docx_path),
     ]
     try:
-        completed = subprocess.run(
+        # Argomenti separati, shell disabilitata e percorsi controllati.
+        completed = subprocess.run(  # nosec B603
             command, capture_output=True, text=True, timeout=90, check=False
         )
     except (OSError, subprocess.TimeoutExpired) as exc:

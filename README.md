@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.7 · versione database 5**
+**Versione applicazione 0.5.8 · versione database 5**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -49,7 +49,7 @@ In alternativa, la procedura manuale è:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
+python -m pip install --require-hashes -r requirements-dev.lock
 Copy-Item .env.example .env
 # Sostituire i cinque segreti di esempio con i valori generati dal comando dedicato.
 python -m flask --app wsgi init-db
@@ -247,8 +247,15 @@ ragionevole è ogni notte alle 02:00.
 
 ## Test
 
+`requirements.txt` e `requirements-dev.txt` dichiarano gli intervalli ammessi;
+i file `.lock` fissano versioni e hash e sono gli unici usati per installazioni
+e CI. `reportlab`, `pytest`, `pip-audit` e `bandit` sono presenti soltanto
+nell'ambiente di sviluppo.
+
 ```powershell
 python -m pytest
+python -m pip_audit --strict --require-hashes -r requirements.lock
+python -m bandit -q -r mcorsi mcp_server.py wsgi.py
 python -m flask --app wsgi db check
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ```

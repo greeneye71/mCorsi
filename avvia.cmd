@@ -50,7 +50,7 @@ set "MCORSI_WEB_HOST=%INDIRIZZO%"
 set "MCORSI_WEB_PORT=%PORTA%"
 
 echo [2/4] Controllo delle dipendenze...
-"%PYTHON%" -m pip install --disable-pip-version-check -q -r requirements.txt
+"%PYTHON%" -m pip install --disable-pip-version-check -q --require-hashes -r requirements.lock
 if errorlevel 1 goto :errore
 
 echo [3/4] Aggiornamento del database...

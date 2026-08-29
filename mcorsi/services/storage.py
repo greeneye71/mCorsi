@@ -5,8 +5,9 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from uuid import uuid4
-from xml.etree import ElementTree
 
+from defusedxml import ElementTree
+from defusedxml.common import DefusedXmlException
 from flask import current_app
 from PIL import Image
 from pypdf import PdfReader
@@ -156,6 +157,7 @@ def _validate_zip_container(path: Path, suffix: str) -> None:
     except StorageError:
         raise
     except (
+        DefusedXmlException,
         ElementTree.ParseError,
         KeyError,
         OSError,

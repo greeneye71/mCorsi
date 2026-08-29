@@ -5,8 +5,10 @@
 Eseguire dall'ambiente virtuale nella radice del progetto:
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install --require-hashes -r requirements-dev.lock
 python -m pytest
+python -m pip_audit --strict --require-hashes -r requirements.lock
+python -m bandit -q -r mcorsi mcp_server.py wsgi.py
 python -m flask --app wsgi db upgrade
 python -m flask --app wsgi db check
 python -m flask --app wsgi version
@@ -15,6 +17,21 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 
 Il test end-to-end copre il percorso corso → OTP partecipante → anagrafica →
 ammissione → questionario → presenza → attestato → portale partecipante.
+
+## Aggiornamento dei lockfile
+
+Generare i lock su Windows con Python 3.13, così viene conservato anche il
+marker multipiattaforma di `pywin32`, quindi verificare entrambi con
+`--require-hashes`:
+
+```powershell
+python -m piptools compile --quiet --upgrade --generate-hashes --allow-unsafe --strip-extras --no-header --no-emit-index-url --no-emit-trusted-host --output-file requirements.lock requirements.txt
+python -m piptools compile --quiet --upgrade --generate-hashes --allow-unsafe --strip-extras --no-header --no-emit-index-url --no-emit-trusted-host --output-file requirements-dev.lock requirements-dev.txt
+python -m pip install --require-hashes -r requirements-dev.lock
+```
+
+I due commenti iniziali dei lockfile documentano versione del generatore e
+sorgente e vanno mantenuti quando vengono rigenerati.
 
 ## Prima messa in esercizio
 

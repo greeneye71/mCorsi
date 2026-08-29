@@ -17,7 +17,8 @@ server MCP rimane vincolato a localhost.
 ## Preparazione comune
 
 1. Installare Python 3.11+, LibreOffice e `cloudflared`.
-2. Creare l'ambiente virtuale e installare `requirements.txt`.
+2. Creare l'ambiente virtuale e installare `requirements.lock` con
+   `pip install --require-hashes -r requirements.lock`.
 3. Copiare `.env.example` in `.env`, generare i segreti con
    `python -m mcorsi.generate_secrets` e sostituire i cinque valori di esempio.
 4. Impostare percorsi assoluti per database, storage e backup.
@@ -249,7 +250,10 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.7 richiede la versione database 5: i tentativi di questionario
+La release 0.5.8 mantiene la versione database 5 e rende riproducibili le
+installazioni usando lockfile con hash; i launcher rifiutano pacchetti diversi
+da quelli approvati. La release 0.5.7 ha introdotto la scadenza dei tentativi:
+i tentativi di questionario
 aperti prima della migrazione vengono chiusi e conteggiati come consumati. I
 nuovi tentativi scadono dopo 60 minuti, valore modificabile con
 `MCORSI_QUESTIONNAIRE_ATTEMPT_EXPIRY_MINUTES`. La 0.5.6 identifica i nuovi
