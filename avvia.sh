@@ -4,7 +4,7 @@ set -eu
 project_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$project_root"
 
-mode=${1:-test}
+mode=${1:-produzione}
 case "$mode" in
     test|sviluppo) mode=test ;;
     produzione|production) mode=produzione ;;
@@ -20,7 +20,8 @@ else
     export MCORSI_ENV=development
 fi
 port=${2:-${MCORSI_WEB_PORT:-5100}}
-host=${3:-${MCORSI_WEB_HOST:-0.0.0.0}}
+if [ "$mode" = "test" ]; then default_host=127.0.0.1; else default_host=0.0.0.0; fi
+host=${3:-${MCORSI_WEB_HOST:-$default_host}}
 case "$port" in
     ''|*[!0-9]*)
         printf 'ERRORE: la porta deve essere un numero, per esempio 5100.\n' >&2

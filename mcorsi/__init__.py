@@ -13,22 +13,37 @@ from .extensions import csrf, db, login_manager, migrate
 from .version import APP_VERSION, DATABASE_VERSION
 
 
-def create_app(config_name: str = "development", test_config: dict | None = None) -> Flask:
+def create_app(config_name: str = "production", test_config: dict | None = None) -> Flask:
+    if config_name not in CONFIGS:
+        raise RuntimeError(f"Configurazione applicativa sconosciuta: {config_name}")
     app = Flask(__name__, instance_relative_config=True)
-    app.config.from_object(CONFIGS.get(config_name, CONFIGS["development"]))
+    app.config.from_object(CONFIGS[config_name])
     if test_config:
         app.config.update(test_config)
 
     if config_name == "production":
         insecure = []
-        if app.config["SECRET_KEY"] == "development-only-change-me":
-            insecure.append("MCORSI_SECRET_KEY")
-        if app.config["ENCRYPTION_KEY"] == app.config["SECRET_KEY"]:
-            insecure.append("MCORSI_ENCRYPTION_KEY")
-        if app.config["OTP_PEPPER"] == app.config["SECRET_KEY"]:
-            insecure.append("MCORSI_OTP_PEPPER")
-        if app.config["MCP_TOKEN_PEPPER"] == app.config["SECRET_KEY"]:
-            insecure.append("MCORSI_MCP_TOKEN_PEPPER")
+        placeholder_secrets = {
+            "development-only-change-me",
+            "cambia-questo-valore",
+            "usa-un-secondo-valore-lungo-e-casuale",
+            "usa-un-terzo-valore-lungo-e-casuale",
+            "usa-un-quarto-valore-lungo-e-casuale",
+        }
+        configured_secrets = {
+            "MCORSI_SECRET_KEY": app.config["SECRET_KEY"],
+            "MCORSI_ENCRYPTION_KEY": app.config["ENCRYPTION_KEY"],
+            "MCORSI_OTP_PEPPER": app.config["OTP_PEPPER"],
+            "MCORSI_MCP_TOKEN_PEPPER": app.config["MCP_TOKEN_PEPPER"],
+        }
+        insecure.extend(
+            name
+            for name, value in configured_secrets.items()
+            if value in placeholder_secrets or len(value) < 32
+        )
+        if len(set(configured_secrets.values())) != len(configured_secrets):
+            insecure.extend(configured_secrets)
+        insecure = sorted(set(insecure))
         if insecure:
             raise RuntimeError(
                 "Configurazione di produzione non sicura. Imposta valori distinti per: "
@@ -121,5 +136,26 @@ def create_app(config_name: str = "development", test_config: dict | None = None
     @app.errorhandler(404)
     def not_found(_error):
         return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        app.logger.error("Errore interno non gestito", exc_info=error)
+        return render_template("errors/500.html"), 500
+
+    @app.after_request
+    def security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+        )
+        if app.config.get("SESSION_COOKIE_SECURE"):
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        return response
 
     return app

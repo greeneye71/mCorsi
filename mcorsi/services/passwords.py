@@ -2,14 +2,23 @@ from __future__ import annotations
 
 
 PASSWORD_POLICY_MESSAGE = (
-    "La password deve avere almeno 8 caratteri e contenere maiuscole, "
-    "minuscole, numeri e caratteri speciali."
+    "La password deve avere da 12 a 128 caratteri, contenere maiuscole, "
+    "minuscole, numeri e caratteri speciali e non essere una password comune."
 )
+
+COMMON_PASSWORDS = {
+    "password123!",
+    "password1234!",
+    "qwerty123456!",
+    "amministratore1!",
+    "administrator1!",
+    "cambiami1234!",
+}
 
 
 def password_policy_errors(password: str) -> list[str]:
     errors: list[str] = []
-    if len(password) < 8:
+    if len(password) < 12 or len(password) > 128:
         errors.append("lunghezza")
     if not any(character.isupper() for character in password):
         errors.append("maiuscola")
@@ -21,6 +30,8 @@ def password_policy_errors(password: str) -> list[str]:
         not character.isalnum() and not character.isspace() for character in password
     ):
         errors.append("carattere speciale")
+    if password.casefold() in COMMON_PASSWORDS:
+        errors.append("password comune")
     return errors
 
 

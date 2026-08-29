@@ -9,10 +9,11 @@ from typing import Any
 from email_validator import EmailNotValidError, validate_email
 from openpyxl import load_workbook
 from openpyxl.utils.cell import range_boundaries
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..models import (
-    Employment,
     Enrollment,
     ImportBatch,
     ImportRow,
@@ -27,6 +28,10 @@ from .storage import path_for
 
 class HistoricalImportError(ValueError):
     pass
+
+
+MAX_IMPORT_ROWS = 10_000
+MAX_IMPORT_COLUMNS = 100
 
 
 def _normal_header(value: Any) -> str:
@@ -66,24 +71,34 @@ def _cell_text(value: Any) -> str:
 
 def _worksheet_matrix(path: Path) -> tuple[list[Any], list[tuple[Any, ...]]]:
     try:
-        workbook = load_workbook(path, read_only=False, data_only=True)
+        workbook = load_workbook(path, read_only=True, data_only=True)
     except Exception as exc:
         raise HistoricalImportError("Il file Excel non è leggibile o è danneggiato.") from exc
-    for worksheet in workbook.worksheets:
-        references = [table.ref for table in worksheet.tables.values()]
-        reference = references[0] if references else worksheet.calculate_dimension()
-        min_col, min_row, max_col, max_row = range_boundaries(reference)
-        values = list(
-            worksheet.iter_rows(
-                min_row=min_row,
-                max_row=max_row,
-                min_col=min_col,
-                max_col=max_col,
-                values_only=True,
+    try:
+        for worksheet in workbook.worksheets:
+            min_col, min_row, max_col, max_row = range_boundaries(
+                worksheet.calculate_dimension()
             )
-        )
-        if len(values) >= 2 and any(value is not None for value in values[0]):
-            return list(values[0]), values[1:]
+            row_count = max_row - min_row + 1
+            column_count = max_col - min_col + 1
+            if row_count > MAX_IMPORT_ROWS or column_count > MAX_IMPORT_COLUMNS:
+                raise HistoricalImportError(
+                    f"Il file supera il limite di {MAX_IMPORT_ROWS} righe o "
+                    f"{MAX_IMPORT_COLUMNS} colonne."
+                )
+            values = list(
+                worksheet.iter_rows(
+                    min_row=min_row,
+                    max_row=max_row,
+                    min_col=min_col,
+                    max_col=max_col,
+                    values_only=True,
+                )
+            )
+            if len(values) >= 2 and any(value is not None for value in values[0]):
+                return list(values[0]), values[1:]
+    finally:
+        workbook.close()
     raise HistoricalImportError("Il file non contiene una tabella con risposte.")
 
 
@@ -216,7 +231,16 @@ def _find_participant(row: ImportRow) -> User | None:
         if existing.has_role("participant"):
             return existing
         raise HistoricalImportError("L'email appartiene a un operatore e non può essere importata.")
-    for user in User.query.filter(User.roles.any(name="participant")).all():
+    candidates = (
+        User.query.options(joinedload(User.participant_profile))
+        .filter(
+            User.roles.any(name="participant"),
+            func.lower(User.first_name) == row.first_name.casefold(),
+            func.lower(User.last_name) == row.last_name.casefold(),
+        )
+        .all()
+    )
+    for user in candidates:
         profile = user.participant_profile
         if (
             user.first_name.casefold() == row.first_name.casefold()
@@ -294,6 +318,10 @@ def confirm_batch(batch: ImportBatch, *, actor: User) -> ImportBatch:
             row.enrollment_id = enrollment.id
             row.status = "imported"
             imported += 1
+        except HistoricalImportError as exc:
+            row.status = "error"
+            row.warning = str(exc)
+            errors += 1
         except Exception as exc:
             row.status = "error"
             row.warning = f"errore di importazione: {type(exc).__name__}"

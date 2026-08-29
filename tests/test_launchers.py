@@ -39,3 +39,15 @@ def test_production_launchers_migrate_before_starting_waitress():
         launcher = _read(relative_path)
         assert "flask --app wsgi init-db" in launcher
         assert launcher.index("flask --app wsgi init-db") < launcher.index("waitress")
+
+
+def test_generic_launchers_fail_closed_and_development_is_local_by_default():
+    windows_launcher = _read("avvia.cmd")
+    linux_launcher = _read("avvia.sh")
+    wsgi = _read("wsgi.py")
+
+    assert 'set "MODALITA=produzione"' in windows_launcher
+    assert "mode=${1:-produzione}" in linux_launcher
+    assert "127.0.0.1" in windows_launcher
+    assert "default_host=127.0.0.1" in linux_launcher
+    assert 'os.environ.get("MCORSI_ENV", "production")' in wsgi

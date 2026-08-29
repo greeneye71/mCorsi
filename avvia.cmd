@@ -4,7 +4,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 set "MODALITA=%~1"
-if "%MODALITA%"=="" set "MODALITA=test"
+if "%MODALITA%"=="" set "MODALITA=produzione"
 if /I "%MODALITA%"=="sviluppo" set "MODALITA=test"
 if /I "%MODALITA%"=="production" set "MODALITA=produzione"
 if /I not "%MODALITA%"=="test" if /I not "%MODALITA%"=="produzione" goto :uso
@@ -18,6 +18,7 @@ if %PORTA% GTR 65535 goto :porta_non_valida
 
 set "INDIRIZZO=%~3"
 if "%INDIRIZZO%"=="" set "INDIRIZZO=%MCORSI_WEB_HOST%"
+if "%INDIRIZZO%"=="" if /I "%MODALITA%"=="test" set "INDIRIZZO=127.0.0.1"
 if "%INDIRIZZO%"=="" set "INDIRIZZO=0.0.0.0"
 
 echo.

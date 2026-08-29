@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
 from flask import current_app
+from jinja2 import nodes
+from jinja2.sandbox import SandboxedEnvironment
 from pypdf import PdfReader
 from PIL import Image
 
@@ -54,6 +56,37 @@ class CertificateError(ValueError):
     pass
 
 
+def _template_environment() -> SandboxedEnvironment:
+    return SandboxedEnvironment(autoescape=True)
+
+
+def _validated_template(path: Path) -> tuple[DocxTemplate, list[str]]:
+    try:
+        document = DocxTemplate(str(path))
+        document.init_docx()
+        environment = _template_environment()
+        source = document.patch_xml(document.get_xml())
+        parsed = environment.parse(source)
+        allowed_nodes = (nodes.If, nodes.Output, nodes.TemplateData, nodes.Name)
+        unsafe = sorted(
+            {type(node).__name__ for node in parsed.find_all(nodes.Node) if not isinstance(node, allowed_nodes)}
+        )
+        if unsafe:
+            raise CertificateError(
+                "Il modello può contenere soltanto segnaposto semplici {{ nome_campo }}."
+            )
+        variables = set(document.get_undeclared_template_variables(environment))
+    except CertificateError:
+        raise
+    except Exception as exc:
+        raise CertificateError("Il documento DOCX non è un modello valido.") from exc
+
+    unknown = sorted(variables - ALLOWED_PLACEHOLDERS)
+    if unknown:
+        raise CertificateError("Campi non riconosciuti: " + ", ".join(unknown))
+    return document, sorted(variables)
+
+
 def validate_signature_image(path: Path) -> None:
     try:
         with Image.open(path) as image:
@@ -68,13 +101,7 @@ def validate_signature_image(path: Path) -> None:
 
 
 def inspect_template(path: Path) -> list[str]:
-    try:
-        variables = set(DocxTemplate(str(path)).get_undeclared_template_variables())
-    except Exception as exc:
-        raise CertificateError("Il documento DOCX non è un modello valido.") from exc
-    unknown = sorted(variables - ALLOWED_PLACEHOLDERS)
-    if unknown:
-        raise CertificateError("Campi non riconosciuti: " + ", ".join(unknown))
+    _document, variables = _validated_template(path)
     if "course_title" not in variables:
         raise CertificateError("Il modello deve contenere {{ course_title }}.")
     has_name = "participant_full_name" in variables or {
@@ -85,7 +112,7 @@ def inspect_template(path: Path) -> list[str]:
         raise CertificateError(
             "Il modello deve contenere {{ participant_full_name }} oppure nome e cognome separati."
         )
-    return sorted(variables)
+    return variables
 
 
 def find_libreoffice() -> str | None:
@@ -141,7 +168,8 @@ def convert_docx_to_pdf(docx_path: Path, output_dir: Path) -> Path:
     pdf_path = output_dir / f"{docx_path.stem}.pdf"
     if completed.returncode != 0 or not pdf_path.is_file() or pdf_path.stat().st_size == 0:
         detail = (completed.stderr or completed.stdout or "errore sconosciuto").strip()
-        raise CertificateError(f"Conversione PDF non riuscita: {detail[:300]}")
+        current_app.logger.error("Conversione PDF non riuscita: %s", detail[:2000])
+        raise CertificateError("Conversione PDF non riuscita. Controlla il log del server.")
     try:
         reader = PdfReader(str(pdf_path))
         if not reader.pages:
@@ -238,7 +266,7 @@ def generate_certificate(enrollment: Enrollment, *, actor: User) -> Certificate:
     temp_dir.mkdir()
     try:
         rendered_docx = temp_dir / "attestato.docx"
-        document = DocxTemplate(str(path_for(template.stored_file)))
+        document, _variables = _validated_template(path_for(template.stored_file))
         if course.signature_asset and "signature_image" in template.placeholders:
             context["signature_image"] = InlineImage(
                 document, str(path_for(course.signature_asset.stored_file)), width=Mm(38)
@@ -246,7 +274,7 @@ def generate_certificate(enrollment: Enrollment, *, actor: User) -> Certificate:
         else:
             context["signature_image"] = ""
         try:
-            document.render(context, autoescape=True)
+            document.render(context, jinja_env=_template_environment(), autoescape=True)
             document.save(str(rendered_docx))
         except Exception as exc:
             raise CertificateError("Impossibile compilare il modello DOCX.") from exc

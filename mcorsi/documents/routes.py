@@ -26,7 +26,7 @@ from ..services.certificates import (
     validate_signature_image,
     validate_pdf,
 )
-from ..services.permissions import participant_required, staff_required
+from ..services.permissions import admin_required, participant_required, staff_required
 from ..services.storage import StorageError, path_for, save_upload
 from .forms import (
     AttendanceForm,
@@ -77,7 +77,7 @@ def default_template():
 
 
 @documents_bp.post("/templates")
-@staff_required
+@admin_required
 def upload_template():
     form = TemplateUploadForm()
     if form.validate_on_submit():
@@ -247,6 +247,8 @@ def set_attendance(enrollment_id: str):
         )
         db.session.commit()
         flash("Presenza aggiornata.", "success")
+    else:
+        flash("Valore della presenza non valido.", "error")
     return redirect(url_for("courses.detail", course_id=enrollment.course_id))
 
 

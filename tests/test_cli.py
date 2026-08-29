@@ -43,7 +43,7 @@ def test_short_password_is_reprompted(runner):
         ),
     )
     assert result.exit_code == 0, result.output
-    assert "almeno 8 caratteri" in result.output
+    assert "da 12 a 128 caratteri" in result.output
 
 
 def test_bootstrap_admin_is_idempotent(app, runner):

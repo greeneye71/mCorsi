@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, url_for
 from flask_login import current_user
 
 from ..extensions import db
@@ -7,7 +7,7 @@ from ..services.audit import record_event
 from ..services.mail import MailConfigurationError, MailDeliveryError, send_email
 from ..services.permissions import admin_required
 from ..services.secrets import SecretDecryptionError, encrypt_secret
-from ..services.notifications import deliver_pending, enqueue_reminders
+from ..services.notifications import enqueue_reminders
 from .forms import (
     NotificationSettingsForm,
     RunNotificationsForm,
@@ -144,6 +144,13 @@ def staff_state(user_id: str):
     if user.id == current_user.id and user.is_active:
         flash("Non puoi disabilitare il tuo account mentre lo stai usando.", "error")
         return redirect(url_for("settings.staff"))
+    if (
+        user.is_active
+        and user.has_role("admin")
+        and User.query.filter(User.is_active.is_(True), User.roles.any(name="admin")).count() <= 1
+    ):
+        flash("Non puoi disabilitare l'ultimo amministratore attivo.", "error")
+        return redirect(url_for("settings.staff"))
     user.is_active = not user.is_active
     record_event(
         "admin.user_enabled_web" if user.is_active else "admin.user_disabled_web",
@@ -193,8 +200,9 @@ def smtp():
                     )
                     flash("Configurazione salvata ed email di prova inviata.", "success")
                     return redirect(url_for("settings.smtp"))
-                except (MailConfigurationError, MailDeliveryError, SecretDecryptionError) as exc:
-                    flash(str(exc), "error")
+                except (MailConfigurationError, MailDeliveryError, SecretDecryptionError):
+                    current_app.logger.exception("Invio dell'email SMTP di prova non riuscito")
+                    flash("Invio dell'email di prova non riuscito. Controlla il log del server.", "error")
         else:
             flash("Configurazione SMTP salvata.", "success")
             return redirect(url_for("settings.smtp"))
@@ -246,9 +254,9 @@ def run_notifications():
     form = RunNotificationsForm()
     if form.validate_on_submit():
         queued = enqueue_reminders()
-        delivered = deliver_pending()
         flash(
-            f"Operazione completata: {sum(queued.values())} accodate, {delivered['sent']} inviate, {delivered['deferred']} rinviate.",
+            f"Operazione completata: {sum(queued.values())} notifiche accodate. "
+            "L'invio sarà eseguito dal processo pianificato.",
             "success",
         )
     return redirect(url_for("settings.notifications"))

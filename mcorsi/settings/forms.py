@@ -18,7 +18,7 @@ class StaffCreateForm(FlaskForm):
     )
     password = PasswordField(
         "Password iniziale",
-        validators=[DataRequired(), Length(max=256), validate_staff_password],
+        validators=[DataRequired(), Length(max=128), validate_staff_password],
     )
     password_confirm = PasswordField(
         "Conferma password", validators=[DataRequired(), EqualTo("password")]
@@ -29,7 +29,7 @@ class StaffCreateForm(FlaskForm):
 class StaffPasswordForm(FlaskForm):
     password = PasswordField(
         "Nuova password",
-        validators=[DataRequired(), Length(max=256), validate_staff_password],
+        validators=[DataRequired(), Length(max=128), validate_staff_password],
     )
     password_confirm = PasswordField(
         "Conferma password", validators=[DataRequired(), EqualTo("password")]
@@ -67,6 +67,13 @@ class SmtpSettingsForm(FlaskForm):
     def validate_use_ssl(self, field):
         if field.data and self.use_starttls.data:
             raise ValidationError("SSL diretto e STARTTLS non possono essere attivi insieme.")
+        local_hosts = {"localhost", "127.0.0.1", "::1"}
+        if (
+            not field.data
+            and not self.use_starttls.data
+            and (self.host.data or "").strip().casefold() not in local_hosts
+        ):
+            raise ValidationError("Attiva SSL/TLS o STARTTLS per i server SMTP remoti.")
 
 
 class NotificationSettingsForm(FlaskForm):

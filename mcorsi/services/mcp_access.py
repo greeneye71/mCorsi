@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import current_app
 
@@ -74,7 +74,12 @@ def verify_access_token(raw_token: str, *, update_last_used: bool = True) -> Mcp
         expiry = expiry if expiry.tzinfo else expiry.replace(tzinfo=timezone.utc)
         if expiry <= now:
             return None
-    if update_last_used:
+    last_used = access.last_used_at
+    if last_used is not None and last_used.tzinfo is None:
+        last_used = last_used.replace(tzinfo=timezone.utc)
+    if update_last_used and (
+        last_used is None or last_used <= now - timedelta(minutes=1)
+    ):
         access.last_used_at = now
         db.session.commit()
     return access

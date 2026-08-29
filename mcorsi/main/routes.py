@@ -15,7 +15,7 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.get("/health/live")
 def health_live():
-    return jsonify(status="ok", application_version=APP_VERSION)
+    return jsonify(status="ok")
 
 
 @main_bp.get("/health/ready")
@@ -49,13 +49,15 @@ def health_ready():
         and components.get("database_schema") == "ok"
         and components["storage"] == "ok"
     )
-    return jsonify(
-        status="ok" if ready and converter_ok else "degraded",
-        application_version=APP_VERSION,
-        required_database_version=DATABASE_VERSION,
-        database_version=stored_version.database_version if stored_version else None,
-        components=components,
-    ), (200 if ready else 503)
+    payload = {"status": "ok" if ready and converter_ok else "degraded"}
+    if current_user.is_authenticated and current_user.has_role("admin", "operator"):
+        payload.update(
+            application_version=APP_VERSION,
+            required_database_version=DATABASE_VERSION,
+            database_version=stored_version.database_version if stored_version else None,
+            components=components,
+        )
+    return jsonify(payload), (200 if ready else 503)
 
 
 @main_bp.get("/")

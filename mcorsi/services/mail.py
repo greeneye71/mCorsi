@@ -40,6 +40,14 @@ def send_email(*, recipient: str, subject: str, text_body: str, html_body: str |
         return
 
     configuration = get_smtp_configuration()
+    if (
+        not configuration.use_ssl
+        and not configuration.use_starttls
+        and configuration.host.strip().casefold() not in {"localhost", "127.0.0.1", "::1"}
+    ):
+        raise MailConfigurationError(
+            "La connessione SMTP remota deve usare SSL/TLS o STARTTLS."
+        )
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = formataddr((configuration.from_name, configuration.from_email))

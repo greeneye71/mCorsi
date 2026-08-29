@@ -9,6 +9,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 INSTANCE_DIR = BASE_DIR / "instance"
 
 
+def _environment_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().casefold() in {"1", "true", "yes", "on"}
+
+
 class BaseConfig:
     SECRET_KEY = os.environ.get("MCORSI_SECRET_KEY", "development-only-change-me")
     ENCRYPTION_KEY = os.environ.get("MCORSI_ENCRYPTION_KEY", SECRET_KEY)
@@ -40,12 +47,13 @@ class BaseConfig:
     REMEMBER_COOKIE_SAMESITE = "Lax"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     WTF_CSRF_TIME_LIMIT = 2 * 60 * 60
-    TRUST_PROXY_HEADERS = False
+    TRUST_PROXY_HEADERS = _environment_flag("MCORSI_TRUST_PROXY_HEADERS")
     OTP_EXPIRY_MINUTES = 10
     OTP_MAX_ATTEMPTS = 5
     OTP_RESEND_COOLDOWN_SECONDS = 60
     OTP_MAX_PER_HOUR = 5
     OTP_MAX_PER_IP_HOUR = 20
+    OTP_MAX_GLOBAL_PER_HOUR = 200
     PASSWORD_MAX_FAILURES = 10
     PASSWORD_FAILURE_WINDOW_MINUTES = 15
     MAIL_BACKEND = "smtp"
@@ -61,7 +69,6 @@ class ProductionConfig(BaseConfig):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
-    TRUST_PROXY_HEADERS = True
 
 
 class TestingConfig(BaseConfig):

@@ -18,5 +18,9 @@ def test_password_policy_rejects_each_missing_requirement(password, missing_requ
     assert missing_requirement in password_policy_errors(password)
 
 
-def test_password_policy_accepts_eight_complex_characters():
-    assert password_is_valid("Abcde1!x") is True
+def test_password_policy_accepts_twelve_complex_characters():
+    assert password_is_valid("Abcdefgh1!xy") is True
+
+
+def test_password_policy_rejects_common_passwords():
+    assert "password comune" in password_policy_errors("Password123!")

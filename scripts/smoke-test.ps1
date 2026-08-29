@@ -12,6 +12,9 @@ $EnvironmentNames = @(
     "MCORSI_ENCRYPTION_KEY",
     "MCORSI_OTP_PEPPER",
     "MCORSI_MCP_TOKEN_PEPPER",
+    "MCORSI_DATABASE_URL",
+    "MCORSI_STORAGE_PATH",
+    "MCORSI_BACKUP_PATH",
     "MCORSI_WEB_HOST",
     "MCORSI_WEB_PORT",
     "MCORSI_MCP_PORT",
@@ -22,18 +25,26 @@ foreach ($Name in $EnvironmentNames) {
     $PreviousEnvironment[$Name] = [Environment]::GetEnvironmentVariable($Name, "Process")
 }
 $env:MCORSI_ENV = "production"
-$env:MCORSI_SECRET_KEY = "smoke-test-secret-key-web"
-$env:MCORSI_ENCRYPTION_KEY = "smoke-test-encryption-key"
-$env:MCORSI_OTP_PEPPER = "smoke-test-otp-pepper"
-$env:MCORSI_MCP_TOKEN_PEPPER = "smoke-test-mcp-token-pepper"
+$env:MCORSI_SECRET_KEY = "smoke-test-secret-key-web-000000000001"
+$env:MCORSI_ENCRYPTION_KEY = "smoke-test-encryption-key-000000000002"
+$env:MCORSI_OTP_PEPPER = "smoke-test-otp-pepper-000000000000003"
+$env:MCORSI_MCP_TOKEN_PEPPER = "smoke-test-mcp-token-pepper-000000004"
 $env:MCORSI_WEB_HOST = "0.0.0.0"
 $env:MCORSI_WEB_PORT = "18000"
 $env:MCORSI_MCP_PORT = "18001"
 $env:MCORSI_MCP_ALLOWED_HOSTS = "127.0.0.1:18001,localhost:18001"
+$SmokeRoot = Join-Path ([IO.Path]::GetTempPath()) ("mcorsi-smoke-" + [guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path $SmokeRoot | Out-Null
+$SmokeDatabase = (Join-Path $SmokeRoot "smoke.sqlite3").Replace("\", "/")
+$env:MCORSI_DATABASE_URL = "sqlite:///$SmokeDatabase"
+$env:MCORSI_STORAGE_PATH = Join-Path $SmokeRoot "storage"
+$env:MCORSI_BACKUP_PATH = Join-Path $SmokeRoot "backups"
 $WebProcess = $null
 $McpProcess = $null
 Push-Location -LiteralPath $ProjectRoot
 try {
+    & $PythonExecutable -m flask --app wsgi init-db
+    if ($LASTEXITCODE -ne 0) { throw "Inizializzazione del database smoke test non riuscita." }
     $WebProcess = Start-Process -FilePath $PythonExecutable -ArgumentList @("-m", "waitress", "--listen=0.0.0.0:18000", "--threads=2", "wsgi:app") -PassThru -WindowStyle Hidden
     $McpProcess = Start-Process -FilePath $PythonExecutable -ArgumentList @("mcp_server.py") -PassThru -WindowStyle Hidden
 
@@ -66,6 +77,9 @@ try {
         } else {
             Set-Item -Path "Env:$Name" -Value $PreviousValue
         }
+    }
+    if (Test-Path -LiteralPath $SmokeRoot) {
+        Remove-Item -LiteralPath $SmokeRoot -Recurse -Force
     }
     Pop-Location
 }

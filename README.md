@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.1 · versione database 3**
+**Versione applicazione 0.5.2 · versione database 3**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -49,26 +49,25 @@ In alternativa, la procedura manuale è:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
+# Sostituire i quattro segreti di esempio con valori distinti generati casualmente.
 python -m flask --app wsgi init-db
 python -m flask --app wsgi admin create
 python wsgi.py
 ```
 
-Sul computer che esegue mCorsi aprire `http://127.0.0.1:5100`. Da un altro
-dispositivo della stessa rete usare `http://IP-DEL-COMPUTER:5100`, sostituendo
-l'indirizzo IPv4 mostrato da `ipconfig`. La password amministrativa viene
+Sul computer che esegue mCorsi aprire `http://127.0.0.1:5100`. La modalità di
+test ascolta soltanto sull'interfaccia locale salvo richiesta esplicita. La
+password amministrativa viene
 richiesta in modo interattivo e non compare negli argomenti né nella cronologia
 della shell.
 
-Il web server ascolta per impostazione predefinita su `0.0.0.0`, quindi su tutte
-le interfacce di rete. Se Windows non mostra la richiesta automatica, occorre
-autorizzare la porta 5100 nel profilo **Privato** del firewall. Per limitare
-nuovamente l'accesso al solo computer locale usare:
+Per una prova controllata dalla rete privata indicare esplicitamente `0.0.0.0`
+e autorizzare la porta 5100 soltanto nel profilo **Privato** del firewall:
 
 ```cmd
-avvia.cmd test 5100 127.0.0.1
+avvia.cmd test 5100 0.0.0.0
 ```
 
 Il nuovo database predefinito è `instance/mcorsi-v2.sqlite3`: il file del
@@ -93,7 +92,7 @@ Indirizzo e porta web sono unici per entrambe le modalità e possono essere
 configurati con `MCORSI_WEB_HOST` e `MCORSI_WEB_PORT`. `MCORSI_MCP_PORT`
 configura invece il processo MCP separato.
 
-L'accesso diretto dalla LAN in modalità `test` usa HTTP non cifrato: va impiegato
+L'eventuale accesso diretto dalla LAN in modalità `test` usa HTTP non cifrato: va impiegato
 soltanto su una rete privata fidata. La modalità `produzione` mantiene i cookie
 Secure e deve essere raggiunta in HTTPS tramite Cloudflare Tunnel o un reverse
 proxy TLS; non aprire la porta web sul router.
@@ -185,7 +184,7 @@ MCORSI_MCP_TOKEN_PEPPER=...
 ```
 
 L'applicazione rifiuta l'avvio in produzione se le quattro chiavi non sono
-configurate separatamente. Modificare `MCORSI_ENCRYPTION_KEY` dopo aver salvato
+configurate separatamente e con almeno 32 caratteri. Modificare `MCORSI_ENCRYPTION_KEY` dopo aver salvato
 la password SMTP renderebbe necessario reinserire tale password.
 
 ## Comandi amministrativi

@@ -151,6 +151,21 @@ def test_otp_is_single_use_and_resend_is_limited(app, client):
         assert challenge.consumed_at is not None
 
 
+def test_participant_otp_never_authenticates_staff_account(app, client):
+    admin_id = _admin(app, email="staff-otp@example.it")
+
+    response = client.post("/participant/access", data={"email": "staff-otp@example.it"})
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/participant/verify")
+    assert app.config["MAIL_OUTBOX"] == []
+    with app.app_context():
+        assert OneTimeCode.query.count() == 0
+        admin = db.session.get(User, admin_id)
+        assert admin.has_role("admin", "operator")
+        assert not admin.has_role("participant")
+
+
 def test_five_wrong_codes_invalidate_challenge(app, client):
     client.post("/participant/access", data={"email": "persona@example.it"})
     correct = _extract_code(app)
@@ -192,6 +207,28 @@ def test_smtp_password_is_encrypted_and_test_mail_is_sent(app, client):
         assert configuration.password_encrypted != "SegretoSmtp!"
         assert "SegretoSmtp!" not in configuration.password_encrypted
         assert decrypt_secret(configuration.password_encrypted) == "SegretoSmtp!"
+
+
+def test_remote_smtp_requires_transport_encryption(app, client):
+    _admin(app)
+    client.post(
+        "/auth/login", data={"email": "admin@example.it", "password": PASSWORD}
+    )
+    response = client.post(
+        "/settings/smtp",
+        data={
+            "host": "smtp.example.it",
+            "port": "25",
+            "from_email": "corsi@example.it",
+            "from_name": "Ufficio corsi",
+            "timeout_seconds": "20",
+            "save": "1",
+        },
+    )
+    assert response.status_code == 200
+    assert b"STARTTLS" in response.data
+    with app.app_context():
+        assert db.session.get(SmtpConfiguration, 1) is None
 
 
 def test_existing_company_needs_only_vat_number(app, client):

@@ -74,4 +74,4 @@ def test_temporary_mail_failure_is_deferred(app):
         message = EmailOutbox.query.one()
         assert message.status == "pending"
         assert message.attempts == 1
-        assert "Configura" in message.last_error
+        assert message.last_error == "Invio non riuscito; consultare il log del server."

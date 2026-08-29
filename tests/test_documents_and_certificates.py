@@ -74,6 +74,40 @@ def test_default_docx_has_required_placeholders_and_geometry():
     assert len(document.tables) == 1
 
 
+def test_docx_template_rejects_attribute_traversal(app):
+    path = Path(app.config["PRIVATE_STORAGE_PATH"]) / "unsafe.docx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    document = Document()
+    document.add_paragraph("{{ participant_full_name }}")
+    document.add_paragraph("{{ course_title.__class__.__mro__ }}")
+    document.save(path)
+
+    with pytest.raises(CertificateError, match="segnaposto semplici"):
+        inspect_template(path)
+
+
+def test_only_admin_can_upload_certificate_templates(app, client):
+    with app.app_context():
+        operator = _user("operator", "template-operator@example.it")
+        db.session.commit()
+        operator_id = operator.id
+    with client.session_transaction() as browser_session:
+        browser_session["_user_id"] = operator_id
+        browser_session["_fresh"] = True
+
+    template_path = Path("mcorsi/assets/default_certificate.docx").resolve()
+    response = client.post(
+        "/documents/templates",
+        data={
+            "name": "Non autorizzato",
+            "file": (BytesIO(template_path.read_bytes()), "modello.docx"),
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 403
+
+
 def test_storage_rejects_macro_documents_and_tiny_signatures(app):
     with app.app_context():
         admin = _user("admin", "security@example.it")

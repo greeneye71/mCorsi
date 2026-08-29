@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+import unicodedata
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -20,7 +21,7 @@ def new_uuid() -> str:
 
 
 def normalize_email(value: str) -> str:
-    return value.strip().casefold()
+    return unicodedata.normalize("NFKC", value).strip().casefold()
 
 
 user_roles = db.Table(

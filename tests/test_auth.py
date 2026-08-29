@@ -33,6 +33,8 @@ def test_login_is_the_shared_entry_point_for_all_audiences(client):
 
 def test_operator_can_login(app, client):
     _staff(app, role="operator")
+    with client.session_transaction() as browser_session:
+        browser_session["anonymous_marker"] = "must-be-cleared"
     response = client.post(
         "/auth/login",
         data={"email": "ADMIN@example.it", "password": "UnaPasswordSicura1!"},
@@ -40,6 +42,8 @@ def test_operator_can_login(app, client):
     )
     assert response.status_code == 200
     assert b"BENTORNATO" in response.data.upper()
+    with client.session_transaction() as browser_session:
+        assert "anonymous_marker" not in browser_session
 
 
 def test_operator_can_login_with_csrf_enabled_from_lan(app, client):
@@ -90,6 +94,32 @@ def test_password_login_is_rate_limited_by_ip(app, client):
     assert b"Troppi tentativi" in blocked.data
 
 
+def test_password_login_is_rate_limited_by_account_across_ips(app, client):
+    app.config["PASSWORD_MAX_FAILURES"] = 2
+    _staff(app)
+    for index in range(2):
+        response = client.post(
+            "/auth/login",
+            environ_overrides={"REMOTE_ADDR": f"192.0.2.{index + 1}"},
+            data={"email": "admin@example.it", "password": "sbagliata"},
+        )
+        assert response.status_code == 401
+    blocked = client.post(
+        "/auth/login",
+        environ_overrides={"REMOTE_ADDR": "192.0.2.200"},
+        data={"email": "admin@example.it", "password": "UnaPasswordSicura1!"},
+    )
+    assert blocked.status_code == 429
+
+
+def test_responses_include_security_headers(client):
+    response = client.get("/auth/login")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "same-origin"
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
+
+
 def test_admin_manages_staff_accounts_in_web_ui(app, client):
     _staff(app)
     login = client.post(
@@ -109,8 +139,8 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
             "name": "Operatore Corsi",
             "email": "operatore@example.it",
             "role": "operator",
-            "password": "Abcde1!x",
-            "password_confirm": "Abcde1!x",
+            "password": "Abcdefgh1!xy",
+            "password_confirm": "Abcdefgh1!xy",
         },
     )
     assert created.status_code == 302
@@ -121,7 +151,7 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
         operator = User.query.filter_by(email="operatore@example.it").one()
         operator_id = operator.id
         assert operator.display_name == "Operatore Corsi"
-        assert operator.check_password("Abcde1!x")
+        assert operator.check_password("Abcdefgh1!xy")
 
     weak = client.post(
         "/settings/staff",
@@ -144,7 +174,7 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
 
     changed = client.post(
         f"/settings/staff/{operator_id}/password",
-        data={"password": "Xyzab2@y", "password_confirm": "Xyzab2@y"},
+        data={"password": "Xyzabcde2@yz", "password_confirm": "Xyzabcde2@yz"},
     )
     assert changed.status_code == 302
     disabled = client.post(f"/settings/staff/{operator_id}/state", data={})
@@ -153,6 +183,6 @@ def test_admin_manages_staff_accounts_in_web_ui(app, client):
         db.session.expire_all()
         operator = db.session.get(User, operator_id)
         assert operator.display_name == "Referente Formazione"
-        assert operator.check_password("Xyzab2@y")
+        assert operator.check_password("Xyzabcde2@yz")
         assert User.query.filter_by(email="debole@example.it").first() is None
         assert operator.is_active is False

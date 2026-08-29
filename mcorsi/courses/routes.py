@@ -165,6 +165,8 @@ def duplicate(course_id: str):
 @staff_required
 def add_admission(course_id: str):
     course = db.get_or_404(Course, course_id)
+    if not can_review_course(course):
+        abort(403)
     form = AdmissionAddForm()
     if form.validate_on_submit():
         participant = User.query.filter_by(email=normalize_email(form.email.data)).first()

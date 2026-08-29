@@ -138,6 +138,7 @@ def _build_questionnaire(
     title = _text(definition.get("title"), "title", 240)
     instructions = _text(definition.get("instructions", ""), "instructions", 5000, required=False)
     passing = _integer(definition.get("passing_percentage"), "passing_percentage", 1, 100)
+    max_attempts = _integer(definition.get("max_attempts", 3), "max_attempts", 1, 20)
     source_version = _integer(definition.get("version", 1), "version", 1, 1_000_000)
     questions = definition.get("questions")
     if not isinstance(questions, list) or not questions:
@@ -150,7 +151,7 @@ def _build_questionnaire(
         title=title,
         instructions=instructions,
         passing_percentage=passing,
-        max_attempts=3,
+        max_attempts=max_attempts,
         sort_order=max((item.sort_order for item in course.questionnaires), default=0) + 1,
         version=source_version + 1 if source_version_increment else source_version,
         is_published=False,

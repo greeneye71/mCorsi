@@ -58,7 +58,9 @@ def request_participant_code(email: str, requested_ip: str = "") -> OneTimeCode 
     now = datetime.now(timezone.utc)
     normalized = normalize_email(email)
     user = User.query.filter_by(email=normalized).first()
-    if user is not None and not user.is_active:
+    if user is not None and (
+        not user.is_active or user.has_role("admin", "operator")
+    ):
         return None
 
     cooldown = now - timedelta(seconds=current_app.config["OTP_RESEND_COOLDOWN_SECONDS"])
@@ -78,13 +80,17 @@ def request_participant_code(email: str, requested_ip: str = "") -> OneTimeCode 
         ).count()
         if hourly_count >= current_app.config["OTP_MAX_PER_HOUR"]:
             raise OtpRateLimitError("Troppe richieste. Riprova più tardi.")
-    if requested_ip:
-        ip_count = OneTimeCode.query.filter(
-            OneTimeCode.requested_ip == requested_ip,
-            OneTimeCode.created_at >= hour_ago,
-        ).count()
-        if ip_count >= current_app.config["OTP_MAX_PER_IP_HOUR"]:
-            raise OtpRateLimitError("Troppe richieste. Riprova più tardi.")
+    requested_ip = requested_ip or "unknown"
+    ip_count = OneTimeCode.query.filter(
+        OneTimeCode.requested_ip == requested_ip,
+        OneTimeCode.created_at >= hour_ago,
+    ).count()
+    global_count = OneTimeCode.query.filter(OneTimeCode.created_at >= hour_ago).count()
+    if (
+        ip_count >= current_app.config["OTP_MAX_PER_IP_HOUR"]
+        or global_count >= current_app.config["OTP_MAX_GLOBAL_PER_HOUR"]
+    ):
+        raise OtpRateLimitError("Troppe richieste. Riprova più tardi.")
 
     if user is None:
         user = User(email=normalized, profile_completed=False, is_active=True)
@@ -103,7 +109,7 @@ def request_participant_code(email: str, requested_ip: str = "") -> OneTimeCode 
         purpose=PARTICIPANT_LOGIN_PURPOSE,
         expires_at=now + timedelta(minutes=current_app.config["OTP_EXPIRY_MINUTES"]),
         max_attempts=current_app.config["OTP_MAX_ATTEMPTS"],
-        requested_ip=requested_ip or "",
+        requested_ip=requested_ip,
     )
     challenge.code_hash = _hash_code(challenge.id, code)
     db.session.add(challenge)
@@ -165,7 +171,8 @@ def verify_participant_code(challenge_id: str, code: str) -> User:
 
     challenge.consumed_at = now
     user = challenge.user
-    if not user.is_active:
+    if not user.is_active or user.has_role("admin", "operator"):
+        challenge.consumed_at = now
         db.session.commit()
         raise OtpError("Codice non valido o scaduto.")
     role = _participant_role()
@@ -192,6 +199,8 @@ def request_company_code(
         Company.vat_number.in_(vat_variants), Company.verification_status == "verified"
     ).first()
     user = User.query.filter_by(email=normalized).first()
+    if user is not None and user.has_role("admin", "operator"):
+        return None
     contact = None
     if company and user:
         contact = CompanyContact.query.filter_by(
@@ -221,13 +230,17 @@ def request_company_code(
         ).count()
         if hourly_count >= current_app.config["OTP_MAX_PER_HOUR"]:
             raise OtpRateLimitError("Troppe richieste. Riprova più tardi.")
-    if requested_ip:
-        ip_count = OneTimeCode.query.filter(
-            OneTimeCode.requested_ip == requested_ip,
-            OneTimeCode.created_at >= hour_ago,
-        ).count()
-        if ip_count >= current_app.config["OTP_MAX_PER_IP_HOUR"]:
-            raise OtpRateLimitError("Troppe richieste. Riprova più tardi.")
+    requested_ip = requested_ip or "unknown"
+    ip_count = OneTimeCode.query.filter(
+        OneTimeCode.requested_ip == requested_ip,
+        OneTimeCode.created_at >= hour_ago,
+    ).count()
+    global_count = OneTimeCode.query.filter(OneTimeCode.created_at >= hour_ago).count()
+    if (
+        ip_count >= current_app.config["OTP_MAX_PER_IP_HOUR"]
+        or global_count >= current_app.config["OTP_MAX_GLOBAL_PER_HOUR"]
+    ):
+        raise OtpRateLimitError("Troppe richieste. Riprova più tardi.")
 
     if user is None:
         user = User(email=normalized, profile_completed=True, is_active=True)
@@ -251,7 +264,7 @@ def request_company_code(
         purpose=COMPANY_LOGIN_PURPOSE,
         expires_at=now + timedelta(minutes=current_app.config["OTP_EXPIRY_MINUTES"]),
         max_attempts=current_app.config["OTP_MAX_ATTEMPTS"],
-        requested_ip=requested_ip or "",
+        requested_ip=requested_ip,
         context={"company_id": company.id},
     )
     challenge.code_hash = _hash_code(challenge.id, code)
@@ -311,6 +324,7 @@ def verify_company_code(challenge_id: str, code: str) -> tuple[User, Company]:
         or company.verification_status != "verified"
         or contact is None
         or not challenge.user.is_active
+        or challenge.user.has_role("admin", "operator")
     ):
         challenge.consumed_at = now
         db.session.commit()

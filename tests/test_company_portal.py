@@ -7,7 +7,7 @@ from io import BytesIO
 from reportlab.pdfgen import canvas
 
 from mcorsi.extensions import db
-from mcorsi.models import Certificate, Company, CompanyContact, ParticipantProfile, Role, User
+from mcorsi.models import Certificate, Company, CompanyContact, OneTimeCode, ParticipantProfile, Role, User
 from mcorsi.services.storage import save_bytes
 
 
@@ -115,6 +115,26 @@ def test_unknown_or_unverified_company_does_not_receive_email(app, client):
     )
     assert response.status_code == 302
     assert len(app.config["MAIL_OUTBOX"]) == before
+
+
+def test_company_otp_never_authenticates_staff_account(app, client):
+    _setup(app)
+    with app.app_context():
+        company = Company.query.filter_by(vat_number="01234567890").one()
+        company.email = "admin@example.it"
+        db.session.commit()
+
+    response = client.post(
+        "/company/access",
+        data={"email": "admin@example.it", "vat_number": "01234567890"},
+    )
+
+    assert response.status_code == 302
+    assert app.config["MAIL_OUTBOX"] == []
+    with app.app_context():
+        assert OneTimeCode.query.count() == 0
+        admin = User.query.filter_by(email="admin@example.it").one()
+        assert not admin.has_role("company_contact")
 
 
 def test_revoked_company_contact_cannot_download_from_existing_session(app, client):

@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from html import escape
 
+from flask import current_app
+
 from ..extensions import db
 from ..models import Certificate, EmailOutbox, Enrollment, NotificationConfiguration
 from .mail import MailConfigurationError, MailDeliveryError, send_email
@@ -147,8 +149,11 @@ def deliver_pending(limit: int = 50, now: datetime | None = None) -> dict[str, i
             message.last_error = ""
             result["sent"] += 1
         except (MailConfigurationError, MailDeliveryError, SecretDecryptionError) as exc:
+            current_app.logger.warning(
+                "Invio notifica %s non riuscito: %s", message.id, exc, exc_info=True
+            )
             message.attempts += 1
-            message.last_error = str(exc)[:1000]
+            message.last_error = "Invio non riuscito; consultare il log del server."
             if message.attempts >= message.max_attempts:
                 message.status = "failed"
                 result["failed"] += 1

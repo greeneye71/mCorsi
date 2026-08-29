@@ -29,20 +29,43 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         remote_ip = request.remote_addr or ""
+        normalized_email = normalize_email(form.email.data)
+        user = User.query.filter_by(email=normalized_email).first()
         cutoff = datetime.now(timezone.utc) - timedelta(
             minutes=current_app.config["PASSWORD_FAILURE_WINDOW_MINUTES"]
         )
-        recent_failures = AuditLog.query.filter(
+        recent_ip_failures = AuditLog.query.filter(
             AuditLog.event_type == "auth.password_failed",
             AuditLog.ip_address == remote_ip,
             AuditLog.created_at >= cutoff,
         ).count()
-        if recent_failures >= current_app.config["PASSWORD_MAX_FAILURES"]:
+        account_cutoff = cutoff
+        if user is not None:
+            latest_success = (
+                AuditLog.query.filter(
+                    AuditLog.event_type == "auth.password_succeeded",
+                    AuditLog.actor_user_id == user.id,
+                    AuditLog.created_at >= cutoff,
+                )
+                .order_by(AuditLog.created_at.desc())
+                .first()
+            )
+            if latest_success is not None:
+                account_cutoff = latest_success.created_at
+        recent_account_failures = AuditLog.query.filter(
+            AuditLog.event_type == "auth.password_failed",
+            AuditLog.target_type == "auth_identity",
+            AuditLog.target_id == normalized_email,
+            AuditLog.created_at >= account_cutoff,
+        ).count()
+        if (
+            recent_ip_failures >= current_app.config["PASSWORD_MAX_FAILURES"]
+            or recent_account_failures >= current_app.config["PASSWORD_MAX_FAILURES"]
+        ):
             record_event("auth.password_rate_limited")
             db.session.commit()
             flash("Troppi tentativi. Attendi alcuni minuti e riprova.", "error")
             return render_template("auth/login.html", form=form), 429
-        user = User.query.filter_by(email=normalize_email(form.email.data)).first()
         valid = (
             user is not None
             and user.is_active
@@ -50,11 +73,17 @@ def login():
             and user.check_password(form.password.data)
         )
         if not valid:
-            record_event("auth.password_failed", detail={"email": normalize_email(form.email.data)})
+            record_event(
+                "auth.password_failed",
+                target_type="auth_identity",
+                target_id=normalized_email,
+                detail={"email": normalized_email},
+            )
             db.session.commit()
             flash("Email o password non validi.", "error")
             return render_template("auth/login.html", form=form), 401
 
+        session.clear()
         login_user(user, remember=form.remember.data)
         user.last_login_at = datetime.now(timezone.utc)
         record_event("auth.password_succeeded", actor=user, target_type="user", target_id=user.id)

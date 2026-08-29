@@ -54,8 +54,7 @@ def verify():
     if form.validate_on_submit():
         try:
             user, company = verify_company_code(challenge_id, form.code.data)
-            session.pop("company_otp_challenge_id", None)
-            session.pop("company_otp_email_masked", None)
+            session.clear()
             login_user(user)
             session["company_id"] = company.id
             flash("Accesso azienda effettuato.", "success")
