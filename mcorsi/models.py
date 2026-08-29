@@ -762,6 +762,19 @@ class QuestionnaireAttempt(db.Model):
         db.UniqueConstraint(
             "questionnaire_id", "participant_user_id", "attempt_number", name="uq_questionnaire_attempt_number"
         ),
+        db.UniqueConstraint(
+            "questionnaire_id",
+            "participant_user_id",
+            "open_slot",
+            name="uq_questionnaire_open_attempt",
+        ),
+        db.CheckConstraint(
+            "(open_slot IS TRUE AND submitted_at IS NULL AND expired_at IS NULL "
+            "AND expires_at IS NOT NULL) OR "
+            "(open_slot IS NULL AND submitted_at IS NOT NULL AND expired_at IS NULL) OR "
+            "(open_slot IS NULL AND submitted_at IS NULL AND expired_at IS NOT NULL)",
+            name="ck_questionnaire_attempt_state",
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
@@ -773,6 +786,10 @@ class QuestionnaireAttempt(db.Model):
     )
     attempt_number = db.Column(db.Integer, nullable=False)
     started_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+    expired_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+    # TRUE identifica l'unico tentativo aperto; NULL permette più tentativi chiusi.
+    open_slot = db.Column(db.Boolean, nullable=True)
     submitted_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
     score = db.Column(db.Numeric(8, 2), nullable=True)
     maximum_score = db.Column(db.Numeric(8, 2), nullable=True)
@@ -785,6 +802,19 @@ class QuestionnaireAttempt(db.Model):
     answers = db.relationship(
         "AttemptAnswer", back_populates="attempt", cascade="all, delete-orphan"
     )
+
+    @property
+    def is_expired(self) -> bool:
+        if self.expired_at is not None:
+            return True
+        if self.submitted_at is not None:
+            return False
+        if self.expires_at is None:
+            return True
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return expires_at <= utc_now()
 
 
 class AttemptAnswer(db.Model):

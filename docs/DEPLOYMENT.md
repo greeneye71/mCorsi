@@ -42,6 +42,7 @@ MCORSI_WEB_PORT=5100
 MCORSI_MCP_PORT=8001
 MCORSI_MCP_PUBLIC_URL=https://mcp.example.it/mcp
 MCORSI_MCP_ALLOWED_HOSTS=mcp.example.it,127.0.0.1:8001,localhost:8001
+MCORSI_QUESTIONNAIRE_ATTEMPT_EXPIRY_MINUTES=60
 ```
 
 `MCORSI_ENCRYPTION_KEY` deve essere una chiave Fernet generata da
@@ -248,10 +249,12 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.6 richiede la versione database 4 e non modifica lo schema. I
-nuovi caricamenti vengono identificati dal contenuto e salvati con un MIME
-normalizzato; verificare dopo l'aggiornamento un DOCX, un XLSX, un'immagine e un
-PDF reali. La 0.5.5 rende obbligatoria `MCORSI_BACKUP_ENCRYPTION_KEY`, che deve
+La release 0.5.7 richiede la versione database 5: i tentativi di questionario
+aperti prima della migrazione vengono chiusi e conteggiati come consumati. I
+nuovi tentativi scadono dopo 60 minuti, valore modificabile con
+`MCORSI_QUESTIONNAIRE_ATTEMPT_EXPIRY_MINUTES`. La 0.5.6 identifica i nuovi
+caricamenti dal contenuto e li salva con un MIME normalizzato. La 0.5.5 rende
+obbligatoria `MCORSI_BACKUP_ENCRYPTION_KEY`, che deve
 essere custodita separatamente dagli archivi. La 0.5.4 rende obbligatoria una chiave Fernet valida per i segreti SMTP
 e offre la relativa procedura di rotazione. La migrazione della release 0.5.3 introduce la
 verifica esplicita delle associazioni tra partecipanti e aziende, mantenendo

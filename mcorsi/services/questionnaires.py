@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+
+from flask import current_app
+from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
 from ..models import (
@@ -145,28 +148,102 @@ def submitted_attempts(questionnaire: Questionnaire, participant: User) -> list[
     )
 
 
+def attempts_used(questionnaire: Questionnaire, participant: User) -> int:
+    return QuestionnaireAttempt.query.filter_by(
+        questionnaire_id=questionnaire.id,
+        participant_user_id=participant.id,
+    ).count()
+
+
+def expire_attempt(
+    attempt: QuestionnaireAttempt, *, now: datetime | None = None
+) -> bool:
+    if attempt.submitted_at is not None or not attempt.is_expired:
+        return False
+    expired_at = now or datetime.now(timezone.utc)
+    was_open = attempt.expired_at is None or attempt.open_slot is True
+    attempt.expired_at = attempt.expired_at or expired_at
+    attempt.open_slot = None
+    if was_open:
+        record_event(
+            "questionnaire.attempt_expired",
+            actor=attempt.participant,
+            target_type="questionnaire_attempt",
+            target_id=attempt.id,
+            detail={
+                "questionnaire_id": attempt.questionnaire_id,
+                "attempt_number": attempt.attempt_number,
+            },
+        )
+    return was_open
+
+
+def expire_open_attempts(questionnaire: Questionnaire, participant: User) -> bool:
+    changed = False
+    open_attempts = QuestionnaireAttempt.query.filter_by(
+        questionnaire_id=questionnaire.id,
+        participant_user_id=participant.id,
+        submitted_at=None,
+        open_slot=True,
+    ).all()
+    for attempt in open_attempts:
+        changed = expire_attempt(attempt) or changed
+    return changed
+
+
 def start_attempt(questionnaire: Questionnaire, participant: User) -> QuestionnaireAttempt:
     if not participant_can_take(questionnaire, participant):
         raise QuestionnaireError("Il questionario non è disponibile per questo account.")
     if has_passed(questionnaire, participant):
         raise QuestionnaireError("Hai già superato questo questionario.")
+    expire_open_attempts(questionnaire, participant)
     unfinished = QuestionnaireAttempt.query.filter_by(
         questionnaire_id=questionnaire.id,
         participant_user_id=participant.id,
         submitted_at=None,
+        open_slot=True,
     ).first()
     if unfinished:
         return unfinished
-    attempts = submitted_attempts(questionnaire, participant)
-    if len(attempts) >= questionnaire.max_attempts:
-        raise QuestionnaireError("Hai esaurito i tre tentativi disponibili.")
-    attempt = QuestionnaireAttempt(
-        questionnaire=questionnaire,
-        participant=participant,
-        attempt_number=len(attempts) + 1,
-        passing_percentage_snapshot=questionnaire.passing_percentage,
+    used = attempts_used(questionnaire, participant)
+    if used >= questionnaire.max_attempts:
+        raise QuestionnaireError("Hai esaurito i tentativi disponibili.")
+    latest_number = (
+        db.session.query(db.func.max(QuestionnaireAttempt.attempt_number))
+        .filter_by(
+            questionnaire_id=questionnaire.id,
+            participant_user_id=participant.id,
+        )
+        .scalar()
+        or 0
     )
-    db.session.add(attempt)
+    expiry_minutes = max(
+        1, int(current_app.config["QUESTIONNAIRE_ATTEMPT_EXPIRY_MINUTES"])
+    )
+    attempt = QuestionnaireAttempt(
+        questionnaire_id=questionnaire.id,
+        participant_user_id=participant.id,
+        attempt_number=latest_number + 1,
+        passing_percentage_snapshot=questionnaire.passing_percentage,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=expiry_minutes),
+        open_slot=True,
+    )
+    try:
+        with db.session.begin_nested():
+            db.session.add(attempt)
+            db.session.flush()
+    except IntegrityError:
+        concurrent = QuestionnaireAttempt.query.filter_by(
+            questionnaire_id=questionnaire.id,
+            participant_user_id=participant.id,
+            submitted_at=None,
+            open_slot=True,
+        ).first()
+        if concurrent and not concurrent.is_expired:
+            return concurrent
+        raise QuestionnaireError(
+            "Non è stato possibile avviare il tentativo. Riprova."
+        ) from None
     record_event(
         "questionnaire.attempt_started",
         actor=participant,
@@ -180,6 +257,9 @@ def start_attempt(questionnaire: Questionnaire, participant: User) -> Questionna
 def submit_attempt(attempt: QuestionnaireAttempt, selections: dict[str, list[str]]) -> QuestionnaireAttempt:
     if attempt.submitted_at is not None:
         raise QuestionnaireError("Questo tentativo è già stato inviato.")
+    if attempt.is_expired:
+        expire_attempt(attempt)
+        raise QuestionnaireError("Questo tentativo è scaduto. Avviane uno nuovo.")
     questionnaire = attempt.questionnaire
     if not participant_can_take(questionnaire, attempt.participant):
         raise QuestionnaireError("Il questionario non è più disponibile.")
@@ -231,6 +311,7 @@ def submit_attempt(attempt: QuestionnaireAttempt, selections: dict[str, list[str
     attempt.score = score
     attempt.maximum_score = maximum
     attempt.submitted_at = datetime.now(timezone.utc)
+    attempt.open_slot = None
     attempt.passed = (score * Decimal("100") / maximum) >= Decimal(
         attempt.passing_percentage_snapshot
     )

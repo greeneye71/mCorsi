@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import io
 import json
-from datetime import date, time
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from mcorsi.extensions import db
 from mcorsi.models import (
@@ -20,6 +21,7 @@ from mcorsi.models import (
 from mcorsi.services.courses import create_course, duplicate_course
 from mcorsi.services.questionnaires import (
     QuestionnaireError,
+    attempts_used,
     course_assessment_complete,
     publish_questionnaire,
     start_attempt,
@@ -169,6 +171,80 @@ def test_three_failed_attempts_are_final(app):
         with pytest.raises(QuestionnaireError, match="esaurito"):
             start_attempt(questionnaire, participant)
         assert QuestionnaireAttempt.query.count() == 3
+
+
+def test_open_attempt_expires_and_consumes_an_attempt(app):
+    with app.app_context():
+        app.config["QUESTIONNAIRE_ATTEMPT_EXPIRY_MINUTES"] = 15
+        admin = _user("admin", "admin@example.it")
+        participant = _user("participant", "persona@example.it")
+        course = _course(admin)
+        questionnaire = _questionnaire(course)
+        questionnaire.max_attempts = 2
+        db.session.add(Enrollment(course=course, participant=participant))
+        publish_questionnaire(questionnaire, actor=admin)
+        db.session.commit()
+
+        first = start_attempt(questionnaire, participant)
+        assert first.expires_at > datetime.now(timezone.utc)
+        assert start_attempt(questionnaire, participant).id == first.id
+        assert attempts_used(questionnaire, participant) == 1
+
+        first.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        second = start_attempt(questionnaire, participant)
+        assert first.expired_at is not None
+        assert first.open_slot is None
+        assert second.attempt_number == 2
+        assert attempts_used(questionnaire, participant) == 2
+
+        second.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        with pytest.raises(QuestionnaireError, match="esaurito"):
+            start_attempt(questionnaire, participant)
+        assert second.expired_at is not None
+        assert second.open_slot is None
+
+
+def test_expired_attempt_cannot_be_submitted(app):
+    with app.app_context():
+        admin = _user("admin", "admin@example.it")
+        participant = _user("participant", "persona@example.it")
+        course = _course(admin)
+        questionnaire = _questionnaire(course)
+        db.session.add(Enrollment(course=course, participant=participant))
+        publish_questionnaire(questionnaire, actor=admin)
+        db.session.commit()
+
+        attempt = start_attempt(questionnaire, participant)
+        attempt.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        with pytest.raises(QuestionnaireError, match="scaduto"):
+            submit_attempt(attempt, {})
+        assert attempt.expired_at is not None
+        assert attempt.open_slot is None
+
+
+def test_database_allows_only_one_open_attempt(app):
+    with app.app_context():
+        admin = _user("admin", "admin@example.it")
+        participant = _user("participant", "persona@example.it")
+        course = _course(admin)
+        questionnaire = _questionnaire(course)
+        db.session.add(Enrollment(course=course, participant=participant))
+        publish_questionnaire(questionnaire, actor=admin)
+        db.session.commit()
+
+        start_attempt(questionnaire, participant)
+        db.session.add(
+            QuestionnaireAttempt(
+                questionnaire=questionnaire,
+                participant=participant,
+                attempt_number=2,
+                passing_percentage_snapshot=questionnaire.passing_percentage,
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+                open_slot=True,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            db.session.flush()
 
 
 def test_course_duplication_clones_questionnaire_as_independent_draft(app):

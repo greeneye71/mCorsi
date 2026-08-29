@@ -20,7 +20,7 @@ from ..services.participants import (
     vat_number_variants,
 )
 from ..services.permissions import participant_required
-from ..services.questionnaires import has_passed, submitted_attempts
+from ..services.questionnaires import attempts_used, has_passed, submitted_attempts
 from ..services.secrets import SecretDecryptionError
 from .forms import CourseCodeForm, OtpRequestForm, OtpVerifyForm, ParticipantProfileForm
 
@@ -243,10 +243,12 @@ def dashboard():
             if not questionnaire.is_published:
                 continue
             attempts = submitted_attempts(questionnaire, current_user)
+            used = attempts_used(questionnaire, current_user)
             questionnaire_states[questionnaire.id] = {
                 "attempts": attempts,
+                "used": used,
                 "passed": has_passed(questionnaire, current_user),
-                "remaining": max(0, questionnaire.max_attempts - len(attempts)),
+                "remaining": max(0, questionnaire.max_attempts - used),
             }
     certificates = Certificate.query.filter_by(participant_user_id=current_user.id).order_by(Certificate.course_date.desc()).all()
     today = date.today()

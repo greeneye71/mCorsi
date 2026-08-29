@@ -20,12 +20,14 @@ from ..services.questionnaire_transfer import (
 )
 from ..services.questionnaires import (
     QuestionnaireError,
+    attempts_used,
     ensure_draft_editable,
+    expire_attempt,
+    expire_open_attempts,
     publish_questionnaire,
     replace_question_options,
     start_attempt,
     submit_attempt,
-    submitted_attempts,
     unpublish_questionnaire,
     validation_errors,
 )
@@ -389,6 +391,8 @@ def participant_start(questionnaire_id: str):
     form = EmptyForm()
     if form.validate_on_submit():
         try:
+            if expire_open_attempts(questionnaire, current_user):
+                db.session.commit()
             attempt = start_attempt(questionnaire, current_user)
             db.session.commit()
             return redirect(url_for("questionnaires.participant_attempt", attempt_id=attempt.id))
@@ -406,6 +410,11 @@ def participant_attempt(attempt_id: str):
         return redirect(url_for("portal.dashboard"))
     if attempt.submitted_at is not None:
         return redirect(url_for("questionnaires.participant_result", attempt_id=attempt.id))
+    if attempt.is_expired:
+        expire_attempt(attempt)
+        db.session.commit()
+        flash("Il tentativo è scaduto e non può più essere inviato.", "error")
+        return redirect(url_for("portal.dashboard"))
     form = AttemptSubmissionForm()
     if form.validate_on_submit():
         selections = {
@@ -428,8 +437,11 @@ def participant_result(attempt_id: str):
     attempt = db.get_or_404(QuestionnaireAttempt, attempt_id)
     if attempt.participant_user_id != current_user.id or attempt.submitted_at is None:
         return redirect(url_for("portal.dashboard"))
-    attempts = submitted_attempts(attempt.questionnaire, current_user)
-    remaining = max(0, attempt.questionnaire.max_attempts - len(attempts))
+    remaining = max(
+        0,
+        attempt.questionnaire.max_attempts
+        - attempts_used(attempt.questionnaire, current_user),
+    )
     percentage = (attempt.score * 100 / attempt.maximum_score) if attempt.maximum_score else 0
     return render_template(
         "questionnaires/result.html",
