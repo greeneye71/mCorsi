@@ -32,6 +32,7 @@ class HistoricalImportError(ValueError):
 
 MAX_IMPORT_ROWS = 10_000
 MAX_IMPORT_COLUMNS = 100
+ATTENDANCE_STATUSES = {"pending", "attended", "absent"}
 
 
 def _normal_header(value: Any) -> str:
@@ -252,9 +253,13 @@ def _find_participant(row: ImportRow) -> User | None:
     return None
 
 
-def confirm_batch(batch: ImportBatch, *, actor: User) -> ImportBatch:
+def confirm_batch(
+    batch: ImportBatch, *, actor: User, attendance_status: str
+) -> ImportBatch:
     if batch.status != "preview":
         raise HistoricalImportError("Questo import è già stato elaborato.")
+    if attendance_status not in ATTENDANCE_STATUSES:
+        raise HistoricalImportError("Lo stato delle presenze importate non è valido.")
     course = create_course(
         actor=actor,
         data={
@@ -311,7 +316,11 @@ def confirm_batch(batch: ImportBatch, *, actor: User) -> ImportBatch:
                 row.warning = (row.warning + "; " if row.warning else "") + "già iscritto"
                 skipped += 1
                 continue
-            enrollment = Enrollment(course=course, participant=participant, attendance_status="attended")
+            enrollment = Enrollment(
+                course=course,
+                participant=participant,
+                attendance_status=attendance_status,
+            )
             db.session.add(enrollment)
             db.session.flush()
             row.participant_user_id = participant.id
@@ -329,6 +338,12 @@ def confirm_batch(batch: ImportBatch, *, actor: User) -> ImportBatch:
     batch.course = course
     batch.status = "completed" if not errors else "completed_with_errors"
     batch.completed_at = datetime.now(timezone.utc)
-    batch.summary = {**batch.summary, "imported": imported, "skipped": skipped, "errors": errors}
+    batch.summary = {
+        **batch.summary,
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+        "attendance_status": attendance_status,
+    }
     db.session.flush()
     return batch

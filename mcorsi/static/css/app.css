@@ -278,6 +278,9 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
 .import-row small { color: var(--muted); font-size: .76rem; }
 .import-head { color: var(--muted); background: var(--surface-soft); font-size: .72rem; font-weight: 760; text-transform: uppercase; }
 .confirm-bar { position: sticky; bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; padding: 1rem 1.2rem; border-radius: 1rem; color: #fff; background: var(--brand-dark); box-shadow: var(--shadow); }
+.confirm-attendance { min-width: 13rem; margin: 0; }
+.confirm-attendance label, .confirm-attendance small { display: block; }
+.confirm-attendance small { margin-top: .25rem; color: #c8ded8; font-size: .74rem; }
 .company-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
 .company-summary { display: grid; min-width: 10rem; padding: 1rem 1.2rem; border-radius: 1rem; color: #fff; background: var(--brand-dark); }
 .company-summary strong { font-size: 2rem; }

@@ -59,7 +59,11 @@ def confirm(batch_id: str):
     form = ConfirmImportForm()
     if form.validate_on_submit():
         try:
-            confirm_batch(batch, actor=current_user)
+            confirm_batch(
+                batch,
+                actor=current_user,
+                attendance_status=form.attendance_status.data,
+            )
             record_event("historical_import.completed", actor=current_user, target_type="import_batch", target_id=batch.id, detail=batch.summary)
             db.session.commit()
             flash("Storico importato.", "success")

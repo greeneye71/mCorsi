@@ -1,7 +1,7 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.5.11
+Versione applicazione: 0.5.12
 Versione database: 6
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
@@ -292,10 +292,12 @@ considerati soltanto:
 - corso e data proposti dal nome file e confermati dall'operatore.
 
 Domande, risposte e punteggi non vengono importati. Il corso storico è creato
-come concluso, le presenze sono confermate e la valutazione pregressa è
-considerata acquisita su conferma dell'operatore. Gli attestati sono quindi
-generabili senza tentativi di questionario; restano obbligatori l'anagrafica
-completa del partecipante e un modello attestato assegnato al corso.
+come concluso; nell'anteprima l'operatore sceglie esplicitamente lo stato delle
+presenze, il cui valore predefinito è «Da confermare». La valutazione pregressa
+è considerata acquisita, ma gli attestati sono generabili senza tentativi di
+questionario soltanto per le presenze confermate; restano obbligatori
+l'anagrafica completa del partecipante e un modello attestato assegnato al
+corso.
 
 L'importazione:
 

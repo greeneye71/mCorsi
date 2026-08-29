@@ -250,12 +250,14 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.11 protegge con un test di regressione l'autorizzazione necessaria
-per aggiungere direttamente un'ammissione a un corso. La release 0.5.10 verifica
-il numero massimo di tentativi durante duplicazione e import dei questionari,
-compresi default e limiti del formato JSON. La release 0.5.9 porta il database
-alla versione 6 e vincola nello schema tutti gli stati categoriali; la migrazione
-si interrompe indicando tabella, colonna e valori da correggere se trova dati
+La release 0.5.12 richiede di scegliere nell'anteprima lo stato delle presenze
+importate, usando «Da confermare» come valore prudente. La release 0.5.11
+protegge con un test di regressione l'autorizzazione necessaria per aggiungere
+direttamente un'ammissione a un corso. La release 0.5.10 verifica il numero
+massimo di tentativi durante duplicazione e import dei questionari, compresi
+default e limiti del formato JSON. La release 0.5.9 porta il database alla
+versione 6 e vincola nello schema tutti gli stati categoriali; la migrazione si
+interrompe indicando tabella, colonna e valori da correggere se trova dati
 storici non riconosciuti. La release 0.5.8 rende riproducibili le installazioni
 usando lockfile con hash; i launcher rifiutano pacchetti diversi da quelli
 approvati. La release 0.5.7 ha introdotto la scadenza dei tentativi:

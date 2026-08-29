@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField, FileRequired
-from wtforms import DateField, StringField, SubmitField
+from wtforms import DateField, SelectField, StringField, SubmitField
 from wtforms.validators import DataRequired, Length
 
 
@@ -12,4 +12,14 @@ class HistoricalImportForm(FlaskForm):
 
 
 class ConfirmImportForm(FlaskForm):
+    attendance_status = SelectField(
+        "Stato delle presenze importate",
+        choices=[
+            ("pending", "Da confermare"),
+            ("attended", "Presenti"),
+            ("absent", "Assenti"),
+        ],
+        default="pending",
+        validators=[DataRequired()],
+    )
     submit = SubmitField("Conferma e crea lo storico")
