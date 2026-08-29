@@ -28,6 +28,11 @@ from mcorsi.services.questionnaires import (
     submit_attempt,
     unpublish_questionnaire,
 )
+from mcorsi.services.questionnaire_transfer import (
+    QuestionnaireTransferError,
+    import_questionnaire,
+    questionnaire_to_dict,
+)
 
 
 PASSWORD = "PasswordMoltoSicura1!"
@@ -252,6 +257,7 @@ def test_course_duplication_clones_questionnaire_as_independent_draft(app):
         admin = _user("admin", "admin@example.it")
         course = _course(admin)
         source = _questionnaire(course)
+        source.max_attempts = 7
         publish_questionnaire(source, actor=admin)
         db.session.commit()
         duplicated = duplicate_course(
@@ -267,6 +273,7 @@ def test_course_duplication_clones_questionnaire_as_independent_draft(app):
         assert cloned.id != source.id
         assert cloned.is_published is False
         assert cloned.version == source.version + 1
+        assert cloned.max_attempts == 7
         assert cloned.maximum_score == source.maximum_score
         assert cloned.questions[0].id != source.questions[0].id
         assert cloned.questions[0].options[0].id != source.questions[0].options[0].id
@@ -376,6 +383,7 @@ def test_staff_archive_preview_export_duplicate_and_json_import(app, client):
         source_course = _course(admin)
         target_course = _course(admin)
         questionnaire = _questionnaire(source_course)
+        questionnaire.max_attempts = 7
         db.session.commit()
         questionnaire_id = questionnaire.id
         target_course_id = target_course.id
@@ -400,6 +408,7 @@ def test_staff_archive_preview_export_duplicate_and_json_import(app, client):
     payload = json.loads(exported.data)
     assert payload["format"] == "mcorsi.questionnaire"
     assert payload["schema_version"] == 1
+    assert payload["questionnaire"]["max_attempts"] == 7
     assert payload["questionnaire"]["questions"][0]["options"][0]["is_correct"] is True
     assert "attempts" not in payload["questionnaire"]
     assert "id" not in payload["questionnaire"]
@@ -433,8 +442,35 @@ def test_staff_archive_preview_export_duplicate_and_json_import(app, client):
         assert all(item.is_published is False for item in copies)
         assert all(item.attempts == [] for item in copies)
         assert all(item.version == 2 for item in copies)
+        assert all(item.max_attempts == 7 for item in copies)
         assert all(len(item.questions) == 2 for item in copies)
         assert copies[0].questions[0].id != copies[1].questions[0].id
+
+
+def test_questionnaire_import_defaults_missing_max_attempts_to_three(app):
+    with app.app_context():
+        admin = _user("admin", "admin@example.it")
+        source_course = _course(admin)
+        target_course = _course(admin)
+        payload = questionnaire_to_dict(_questionnaire(source_course))
+        payload["questionnaire"].pop("max_attempts")
+
+        imported = import_questionnaire(payload, course=target_course, actor=admin)
+
+        assert imported.max_attempts == 3
+
+
+@pytest.mark.parametrize("invalid_max_attempts", [0, 21, True])
+def test_questionnaire_import_rejects_invalid_max_attempts(app, invalid_max_attempts):
+    with app.app_context():
+        admin = _user("admin", "admin@example.it")
+        source_course = _course(admin)
+        target_course = _course(admin)
+        payload = questionnaire_to_dict(_questionnaire(source_course))
+        payload["questionnaire"]["max_attempts"] = invalid_max_attempts
+
+        with pytest.raises(QuestionnaireTransferError, match="max_attempts"):
+            import_questionnaire(payload, course=target_course, actor=admin)
 
 
 def test_invalid_questionnaire_json_is_rejected_without_partial_data(app, client):
