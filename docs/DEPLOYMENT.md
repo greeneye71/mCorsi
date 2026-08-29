@@ -204,7 +204,9 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `MCORSI_ENCRYPTION_KEY` senza
 reinserire la password SMTP cifrata con la chiave precedente.
 
-La release 0.5.2 richiede la versione database 3. La migrazione identifica i
+La release 0.5.3 richiede la versione database 4. La migrazione introduce la
+verifica esplicita delle associazioni tra partecipanti e aziende, mantenendo
+come verificate le associazioni già presenti. La precedente migrazione identifica i
 corsi storici e aggiorna anche quelli già importati, consentendo l'emissione
 degli attestati senza questionari pregressi. La tabella `system_version`
 registra questa compatibilità, mentre `alembic_version` identifica la migrazione

@@ -58,7 +58,7 @@ def test_full_operator_flow_and_clean_duplication(app, client):
         "/companies/new",
         data={
             "business_name": "Esempio Srl",
-            "vat_number": "IT 01234567890",
+            "vat_number": "IT 01234567897",
             "tax_code": "01234567890",
             "address": "Via Roma 1",
             "postal_code": "00100",

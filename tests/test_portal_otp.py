@@ -7,7 +7,15 @@ import pytest
 
 from mcorsi import create_app
 from mcorsi.extensions import db
-from mcorsi.models import AdmissionRequest, Company, OneTimeCode, Role, SmtpConfiguration, User
+from mcorsi.models import (
+    AdmissionRequest,
+    Company,
+    Employment,
+    OneTimeCode,
+    Role,
+    SmtpConfiguration,
+    User,
+)
 from mcorsi.services.courses import create_course
 from mcorsi.services.secrets import decrypt_secret
 
@@ -113,15 +121,19 @@ def test_otp_profile_company_and_course_request(app, client):
 
     saved = client.post(
         "/participant/profile",
-        data=_profile_payload(vat_number="IT 01234567890", include_company=True),
+        data=_profile_payload(vat_number="IT 01234567897", include_company=True),
     )
     assert saved.status_code == 302
     assert saved.headers["Location"].endswith("/participant")
     with app.app_context():
         company = Company.query.one()
-        assert company.vat_number == "IT01234567890"
+        assert company.vat_number == "01234567897"
         assert company.verification_status == "pending"
         assert company.source == "participant"
+        employment = Employment.query.one()
+        assert employment.verification_status == "pending"
+        assert not employment.is_current
+        assert employment.requested_by_user_id is not None
 
     requested = client.post("/participant/admissions", data={"code": course_code.lower()})
     assert requested.status_code == 302
@@ -232,10 +244,11 @@ def test_remote_smtp_requires_transport_encryption(app, client):
 
 
 def test_existing_company_needs_only_vat_number(app, client):
+    admin_id = _admin(app)
     with app.app_context():
         company = Company(
             business_name="Esistente Srl",
-            vat_number="01234567890",
+            vat_number="01234567897",
             address="Via Milano 2",
             postal_code="20100",
             city="Milano",
@@ -247,13 +260,72 @@ def test_existing_company_needs_only_vat_number(app, client):
         company_id = company.id
     _request_and_verify(app, client)
     response = client.post(
-        "/participant/profile", data=_profile_payload(vat_number="01234567890")
+        "/participant/profile", data=_profile_payload(vat_number="01234567897")
     )
     assert response.status_code == 302
     with app.app_context():
         user = User.query.filter_by(email="persona@example.it").one()
-        assert user.participant_profile.current_employment.company_id == company_id
+        assert user.participant_profile.current_employment is None
+        employment = user.participant_profile.pending_employment
+        assert employment.company_id == company_id
+        assert employment.requested_by_user_id == user.id
+        employment_id = employment.id
         assert Company.query.count() == 1
+
+    client.post("/auth/logout")
+    with client.session_transaction() as session:
+        session["_user_id"] = admin_id
+        session["_fresh"] = True
+    approved = client.post(f"/companies/associations/{employment_id}/approve")
+    assert approved.status_code == 302
+    with app.app_context():
+        user = User.query.filter_by(email="persona@example.it").one()
+        employment = user.participant_profile.current_employment
+        assert employment.company_id == company_id
+        assert employment.verification_status == "verified"
+        assert employment.reviewed_by_user_id == admin_id
+        assert employment.reviewed_at is not None
+
+
+def test_unverified_company_blocks_association_approval(app, client):
+    admin_id = _admin(app)
+    _request_and_verify(app, client)
+    client.post(
+        "/participant/profile",
+        data=_profile_payload(vat_number="IT 01234567897", include_company=True),
+    )
+    with app.app_context():
+        employment_id = Employment.query.one().id
+
+    client.post("/auth/logout")
+    with client.session_transaction() as session:
+        session["_user_id"] = admin_id
+        session["_fresh"] = True
+    response = client.post(
+        f"/companies/associations/{employment_id}/approve", follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert b"Verifica prima l&#39;azienda" in response.data
+    with app.app_context():
+        employment = db.session.get(Employment, employment_id)
+        assert employment.verification_status == "pending"
+        assert not employment.is_current
+
+
+def test_participant_profile_rejects_invalid_italian_vat_number(app, client):
+    _request_and_verify(app, client)
+
+    response = client.post(
+        "/participant/profile",
+        data=_profile_payload(vat_number="IT 01234567890", include_company=True),
+    )
+
+    assert response.status_code == 200
+    assert "partita IVA italiana non".encode() in response.data
+    with app.app_context():
+        assert Company.query.count() == 0
+        assert Employment.query.count() == 0
 
 
 def test_production_rejects_reused_or_default_keys():

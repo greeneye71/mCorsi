@@ -37,3 +37,7 @@ class CompanyForm(FlaskForm):
         validators=[DataRequired()],
     )
     submit = SubmitField("Salva azienda")
+
+
+class EmploymentDecisionForm(FlaskForm):
+    submit = SubmitField("Conferma")

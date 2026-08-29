@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.2 · versione database 3**
+**Versione applicazione 0.5.3 · versione database 4**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -109,7 +109,7 @@ proxy TLS; non aprire la porta web sul router.
 - registrazione automatica dell'iscrizione dopo l'approvazione;
 - accesso partecipanti tramite OTP email a uso singolo;
 - pagina iniziale comune con accessi distinti per operatori, partecipanti e aziende;
-- completamento autonomo del profilo e dell'azienda;
+- completamento autonomo del profilo e richiesta verificabile di associazione all'azienda;
 - configurazione SMTP amministrativa con password cifrata;
 - versione applicazione e database visibile nella pagina di configurazione;
 - nomi visualizzati per operatori e amministratori, distinti dalla mail di accesso;

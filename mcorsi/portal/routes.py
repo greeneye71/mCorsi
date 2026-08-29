@@ -12,7 +12,13 @@ from ..services.audit import record_event
 from ..services.courses import CourseOperationError, request_admission
 from ..services.mail import MailConfigurationError, MailDeliveryError
 from ..services.otp import OtpError, OtpRateLimitError, request_participant_code, verify_participant_code
-from ..services.participants import normalize_identifier, set_current_company
+from ..services.participants import (
+    is_valid_italian_vat_number,
+    normalize_identifier,
+    normalize_vat_number,
+    request_company_association,
+    vat_number_variants,
+)
 from ..services.permissions import participant_required
 from ..services.questionnaires import has_passed, submitted_attempts
 from ..services.secrets import SecretDecryptionError
@@ -108,7 +114,10 @@ def profile():
     profile = current_user.participant_profile
     form = ParticipantProfileForm(obj=current_user)
     current_company = None
-    if profile and profile.current_employment:
+    pending_employment = profile.pending_employment if profile else None
+    if pending_employment:
+        current_company = pending_employment.company
+    elif profile and profile.current_employment:
         current_company = profile.current_employment.company
     if not form.is_submitted():
         if profile:
@@ -120,12 +129,27 @@ def profile():
 
     if form.validate_on_submit():
         company = None
-        vat_number = normalize_identifier(form.vat_number.data or "")
+        vat_number = normalize_vat_number(form.vat_number.data or "")
         if vat_number:
-            company = Company.query.filter_by(vat_number=vat_number).first()
+            if not is_valid_italian_vat_number(vat_number):
+                form.vat_number.errors.append("La partita IVA italiana non è valida.")
+                return render_template(
+                    "portal/profile.html",
+                    form=form,
+                    is_first_access=not current_user.profile_completed,
+                    pending_employment=pending_employment,
+                )
+            company = Company.query.filter(
+                Company.vat_number.in_(vat_number_variants(vat_number))
+            ).first()
             if company is None:
                 if not _new_company_valid(form):
-                    return render_template("portal/profile.html", form=form, is_first_access=not current_user.profile_completed)
+                    return render_template(
+                        "portal/profile.html",
+                        form=form,
+                        is_first_access=not current_user.profile_completed,
+                        pending_employment=pending_employment,
+                    )
                 company = Company(
                     business_name=form.company_business_name.data.strip(),
                     vat_number=vat_number,
@@ -142,6 +166,17 @@ def profile():
                 )
                 db.session.add(company)
                 db.session.flush()
+                record_event(
+                    "company.created",
+                    actor=current_user,
+                    target_type="company",
+                    target_id=company.id,
+                    detail={
+                        "vat_number": company.vat_number,
+                        "verification_status": company.verification_status,
+                        "source": company.source,
+                    },
+                )
 
         current_user.first_name = form.first_name.data.strip()
         current_user.last_name = form.last_name.data.strip()
@@ -154,20 +189,41 @@ def profile():
         profile.birth_date = form.birth_date.data
         profile.tax_code = normalize_identifier(form.tax_code.data or "")
         profile.certificate_title = (form.certificate_title.data or "").strip()
-        set_current_company(profile, company.id if company else "")
+        employment = request_company_association(
+            profile, company.id if company else "", requester=current_user
+        )
+        db.session.flush()
         current_user.profile_completed = True
         record_event(
             "participant.profile_completed",
             actor=current_user,
             target_type="user",
             target_id=current_user.id,
-            detail={"company_id": company.id if company else None},
+            detail={
+                "company_id": company.id if company else None,
+                "employment_id": employment.id if employment else None,
+                "association_status": employment.verification_status if employment else None,
+            },
         )
+        if employment and employment.verification_status == "pending":
+            record_event(
+                "employment.association_requested",
+                actor=current_user,
+                target_type="employment",
+                target_id=employment.id,
+                detail={"company_id": employment.company_id},
+            )
         db.session.commit()
-        flash("Profilo salvato.", "success")
+        if employment and employment.verification_status == "pending":
+            flash("Profilo salvato. L'associazione all'azienda è in verifica.", "success")
+        else:
+            flash("Profilo salvato.", "success")
         return redirect(url_for("portal.dashboard"))
     return render_template(
-        "portal/profile.html", form=form, is_first_access=not current_user.profile_completed
+        "portal/profile.html",
+        form=form,
+        is_first_access=not current_user.profile_completed,
+        pending_employment=pending_employment,
     )
 
 

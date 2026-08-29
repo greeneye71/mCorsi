@@ -2,6 +2,23 @@
 {% block title %}Aziende · mCorsi{% endblock %}
 {% block content %}
 <section class="page-heading"><div><p class="eyebrow">Anagrafiche</p><h1>Aziende</h1><p class="lead">Le aziende verificate potranno in seguito accedere agli attestati dei propri dipendenti.</p></div><a class="button button-primary" href="{{ url_for('companies.create') }}">Nuova azienda</a></section>
+{% if pending_employments %}
+<section class="panel table-panel">
+  <div class="panel-heading"><div><p class="eyebrow">Verifica richiesta</p><h2>Associazioni partecipante–azienda</h2><p>Approva solo dopo aver verificato che il partecipante appartenga realmente all'azienda indicata.</p></div></div>
+  <div class="data-table" role="table" aria-label="Associazioni aziendali da verificare">
+    <div class="table-row company-columns table-head" role="row"><span>Partecipante</span><span>Azienda</span><span>Stato azienda</span><span>Decisione</span></div>
+    {% for employment in pending_employments %}<div class="table-row company-columns" role="row">
+      <span data-label="Partecipante"><strong>{{ employment.participant.user.display_name }}</strong><small>{{ employment.participant.user.email }}</small></span>
+      <span data-label="Azienda"><strong>{{ employment.company.business_name }}</strong><small>{{ employment.company.vat_number }}</small></span>
+      <span data-label="Stato azienda"><span class="badge badge-{{ employment.company.verification_status }}">{{ company_status_labels[employment.company.verification_status] }}</span>{% if employment.company.verification_status != 'verified' %}<small><a href="{{ url_for('companies.edit', company_id=employment.company_id) }}">Verifica l'azienda</a></small>{% endif %}</span>
+      <span class="table-action">
+        <form method="post" action="{{ url_for('companies.approve_employment', employment_id=employment.id) }}">{{ employment_form.hidden_tag() }}<button class="button button-primary" type="submit" {% if employment.company.verification_status != 'verified' %}disabled{% endif %}>Approva</button></form>
+        <form method="post" action="{{ url_for('companies.reject_employment', employment_id=employment.id) }}">{{ employment_form.hidden_tag() }}<button class="button button-quiet" type="submit">Rifiuta</button></form>
+      </span>
+    </div>{% endfor %}
+  </div>
+</section>
+{% endif %}
 {% if companies %}
 <section class="panel table-panel"><div class="data-table" role="table" aria-label="Aziende">
   <div class="table-row company-columns table-head" role="row"><span>Azienda</span><span>Partita IVA</span><span>Stato</span><span></span></div>

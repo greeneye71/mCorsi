@@ -266,7 +266,21 @@ class ParticipantProfile(db.Model):
 
     @property
     def current_employment(self):
-        return next((item for item in self.employments if item.is_current), None)
+        return next(
+            (
+                item
+                for item in self.employments
+                if item.is_current and item.verification_status == "verified"
+            ),
+            None,
+        )
+
+    @property
+    def pending_employment(self):
+        return next(
+            (item for item in self.employments if item.verification_status == "pending"),
+            None,
+        )
 
 
 class Employment(db.Model):
@@ -290,10 +304,22 @@ class Employment(db.Model):
     started_on = db.Column(db.Date, nullable=False, default=date.today)
     ended_on = db.Column(db.Date, nullable=True)
     is_current = db.Column(db.Boolean, nullable=False, default=True)
+    verification_status = db.Column(
+        db.String(20), nullable=False, default="verified", index=True
+    )
+    requested_by_user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_by_user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
 
     participant = db.relationship("ParticipantProfile", back_populates="employments")
     company = db.relationship("Company", back_populates="employments")
+    requested_by = db.relationship("User", foreign_keys=[requested_by_user_id])
+    reviewed_by = db.relationship("User", foreign_keys=[reviewed_by_user_id])
 
 
 class CompanyContact(db.Model):

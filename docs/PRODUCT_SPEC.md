@@ -1,8 +1,8 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.5.2
-Versione database: 2
+Versione applicazione: 0.5.3
+Versione database: 4
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
 
@@ -140,7 +140,9 @@ Una stessa identità email può avere più ruoli.
 - stato di verifica e provenienza del dato.
 
 Se una partita IVA non esiste, il partecipante inserisce i dati dell'azienda.
-L'azienda è immediatamente associabile ma resta marcata `da verificare`.
+Sia l'azienda sia l'associazione restano `da verificare`: soltanto lo staff può
+rendere effettiva la relazione, dopo avere verificato l'azienda e la richiesta.
+Per le partite IVA italiane il sistema controlla formato e cifra di controllo.
 
 La relazione lavorativa tra partecipante e azienda è separata dall'anagrafica.
 Gli attestati conservano uno snapshot immutabile dei dati aziendali usati al
