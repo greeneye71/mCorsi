@@ -68,7 +68,7 @@ con una chiave master fornita dall'ambiente di esecuzione.
 
 mCorsi usa tre informazioni complementari:
 
-- versione applicativa semantica, attualmente `0.5.4`;
+- versione applicativa semantica, attualmente `0.5.6`;
 - versione intera dello schema, attualmente `3`, conservata nella riga unica
   della tabella `system_version`;
 - revisione Alembic, che identifica esattamente l'ultima migrazione applicata.
@@ -86,6 +86,14 @@ WSGI. Espone Streamable HTTP stateless su localhost, dietro un hostname del
 tunnel dedicato. I token sono casuali, conservati come HMAC, scadono, sono
 revocabili e includono scope granulari. Ogni chiamata viene registrata; file,
 password, OTP, credenziali SMTP e risposte corrette non sono esposti.
+
+## File privati
+
+Lo storage assegna nomi fisici casuali e valida ogni nuovo file dopo la copia in
+area privata. Il MIME memorizzato deriva dall'estensione consentita soltanto
+dopo aver verificato il contenuto: parsing PDF, verifica Pillow per immagini e
+struttura XML/ZIP per Office e OpenDocument. L'header MIME inviato dal client
+non viene usato come fonte attendibile.
 
 ## Backup
 

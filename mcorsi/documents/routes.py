@@ -27,7 +27,7 @@ from ..services.certificates import (
     validate_pdf,
 )
 from ..services.permissions import admin_required, participant_required, staff_required
-from ..services.storage import StorageError, path_for, save_upload
+from ..services.storage import StorageError, canonical_mime_type, path_for, save_upload
 from .forms import (
     AttendanceForm,
     CourseCertificateSettingsForm,
@@ -47,7 +47,7 @@ def _safe_download(stored_file: StoredFile):
         abort(404)
     return send_file(
         path,
-        mimetype=stored_file.mime_type,
+        mimetype=canonical_mime_type(stored_file.original_name),
         as_attachment=True,
         download_name=stored_file.original_name,
         conditional=True,
@@ -89,7 +89,6 @@ def upload_template():
                 allowed_extensions={".docx"},
                 allowed_mime_types={
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    "application/octet-stream",
                 },
             )
             placeholders = inspect_template(path_for(stored))
@@ -123,7 +122,7 @@ def upload_signature():
                 actor=current_user,
                 category="signatures",
                 allowed_extensions={".png", ".jpg", ".jpeg"},
-                allowed_mime_types={"image/png", "image/jpeg", "application/octet-stream"},
+                allowed_mime_types={"image/png", "image/jpeg"},
             )
             validate_signature_image(path_for(stored))
             signature = SignatureAsset(
@@ -278,7 +277,7 @@ def participant_upload():
                 actor=current_user,
                 category="certificates-uploaded",
                 allowed_extensions={".pdf"},
-                allowed_mime_types={"application/pdf", "application/octet-stream"},
+                allowed_mime_types={"application/pdf"},
             )
             validate_pdf(path_for(stored))
             certificate = Certificate(

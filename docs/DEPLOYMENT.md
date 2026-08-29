@@ -248,10 +248,11 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.5 richiede la versione database 4. Prima dell'aggiornamento è
-obbligatorio generare e configurare `MCORSI_BACKUP_ENCRYPTION_KEY`; la chiave
-deve essere custodita separatamente dagli archivi. La release non modifica lo
-schema. La 0.5.4 rende obbligatoria una chiave Fernet valida per i segreti SMTP
+La release 0.5.6 richiede la versione database 4 e non modifica lo schema. I
+nuovi caricamenti vengono identificati dal contenuto e salvati con un MIME
+normalizzato; verificare dopo l'aggiornamento un DOCX, un XLSX, un'immagine e un
+PDF reali. La 0.5.5 rende obbligatoria `MCORSI_BACKUP_ENCRYPTION_KEY`, che deve
+essere custodita separatamente dagli archivi. La 0.5.4 rende obbligatoria una chiave Fernet valida per i segreti SMTP
 e offre la relativa procedura di rotazione. La migrazione della release 0.5.3 introduce la
 verifica esplicita delle associazioni tra partecipanti e aziende, mantenendo
 come verificate le associazioni già presenti. La precedente migrazione identifica i

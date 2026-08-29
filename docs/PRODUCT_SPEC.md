@@ -1,7 +1,7 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.5.5
+Versione applicazione: 0.5.6
 Versione database: 4
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
@@ -256,7 +256,10 @@ per consentire una futura firma digitale remota/PAdES.
 - file conservati fuori dalla directory pubblica e serviti solo dopo controllo
   delle autorizzazioni;
 - nomi fisici casuali, metadati e hash nel database;
-- estensioni, MIME type e dimensioni consentite configurabili;
+- corrispondenza obbligatoria tra estensione e contenuto reale, con MIME
+  normalizzato dal server senza fidarsi dell'header del browser;
+- limiti strutturali per contenitori Office/OpenDocument e rifiuto di ZIP
+  cifrati, percorsi anomali e carichi espansi eccessivi;
 - rifiuto di DOCM e altri formati con macro;
 - documenti e modelli versionati e non modificati retroattivamente;
 - possibilità futura di storage S3 compatibile e scansione antivirus.
