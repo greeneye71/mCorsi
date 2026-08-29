@@ -181,6 +181,41 @@ def test_only_referent_or_admin_can_decide(app, client):
         assert Enrollment.query.count() == 0
 
 
+def test_unrelated_operator_cannot_add_an_admission(app, client):
+    referent_id = _make_user(app, "referente@example.it", "operator")
+    _make_user(app, "altro@example.it", "operator")
+    _make_user(app, "persona@example.it", "participant")
+    with app.app_context():
+        referent = db.session.get(User, referent_id)
+        course = create_course(
+            actor=referent,
+            data={
+                "title": "Sicurezza",
+                "description": "",
+                "status": "open",
+                "referent_user_id": referent_id,
+                "session_date": date(2026, 10, 1),
+                "start_time": time(9, 0),
+                "end_time": time(12, 0),
+                "delivery_mode": "online",
+                "meeting_url": "",
+                "certificate_validity_months": 60,
+            },
+        )
+        db.session.commit()
+        course_id = course.id
+
+    _login(client, "altro@example.it")
+    response = client.post(
+        f"/courses/{course_id}/admissions",
+        data={"email": "persona@example.it"},
+    )
+
+    assert response.status_code == 403
+    with app.app_context():
+        assert AdmissionRequest.query.count() == 0
+
+
 def test_changing_company_preserves_employment_history(app, client):
     _make_user(app, "admin@example.it", "admin")
     participant_id = _make_user(app, "persona@example.it", "participant", first_name="Anna", last_name="Bianchi")
