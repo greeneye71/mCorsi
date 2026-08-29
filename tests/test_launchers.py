@@ -35,10 +35,32 @@ def test_development_and_production_share_the_same_default_web_port():
 
 
 def test_production_launchers_migrate_before_starting_waitress():
-    for relative_path in ("scripts/run-production.sh", "scripts/run-production.ps1"):
+    for relative_path in (
+        "avvia.cmd",
+        "avvia.sh",
+        "scripts/run-production.sh",
+        "scripts/run-production.ps1",
+    ):
         launcher = _read(relative_path)
+        assert "startup_secrets prepare" in launcher
+        assert launcher.index("startup_secrets prepare") < launcher.index(
+            "flask --app wsgi init-db"
+        )
+        assert "startup_secrets needs-backup" in launcher
+        assert "flask --app wsgi backup create" in launcher
+        assert launcher.index("flask --app wsgi backup create") < launcher.index(
+            "flask --app wsgi init-db"
+        )
         assert "flask --app wsgi init-db" in launcher
         assert launcher.index("flask --app wsgi init-db") < launcher.index("waitress")
+        assert "flask --app wsgi admin rotate-encryption-key" in launcher
+        assert launcher.index("flask --app wsgi init-db") < launcher.index(
+            "flask --app wsgi admin rotate-encryption-key"
+        )
+        assert "startup_secrets complete" in launcher
+        assert launcher.index("flask --app wsgi init-db") < launcher.index(
+            "startup_secrets complete"
+        )
 
 
 def test_generic_launchers_fail_closed_and_development_is_local_by_default():

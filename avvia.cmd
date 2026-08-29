@@ -53,9 +53,37 @@ echo [2/4] Controllo delle dipendenze...
 "%PYTHON%" -m pip install --disable-pip-version-check -q --require-hashes -r requirements.lock
 if errorlevel 1 goto :errore
 
+set "MIGRAZIONE_SEGRETI=0"
+if /I "%MODALITA%"=="produzione" (
+    echo Controllo della configurazione di cifratura...
+    "%PYTHON%" -m mcorsi.startup_secrets prepare
+    if errorlevel 1 goto :errore
+    "%PYTHON%" -m mcorsi.startup_secrets pending
+    if not errorlevel 1 (
+        set "MIGRAZIONE_SEGRETI=1"
+        "%PYTHON%" -m mcorsi.startup_secrets needs-backup
+        if not errorlevel 1 (
+            echo Backup di sicurezza prima della migrazione dei segreti...
+            "%PYTHON%" -m flask --app wsgi backup create
+            if errorlevel 1 goto :errore
+        )
+    )
+)
+
 echo [3/4] Aggiornamento del database...
 "%PYTHON%" -m flask --app wsgi init-db
 if errorlevel 1 goto :errore
+
+if "%MIGRAZIONE_SEGRETI%"=="1" (
+    "%PYTHON%" -m mcorsi.startup_secrets needs-rotation
+    if not errorlevel 1 (
+        echo Ricifratura dei segreti persistiti...
+        "%PYTHON%" -m flask --app wsgi admin rotate-encryption-key
+        if errorlevel 1 goto :errore
+    )
+    "%PYTHON%" -m mcorsi.startup_secrets complete
+    if errorlevel 1 goto :errore
+)
 
 echo [4/4] Controllo dell'amministratore...
 "%PYTHON%" -m flask --app wsgi admin bootstrap

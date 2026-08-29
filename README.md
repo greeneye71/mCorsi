@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.12 · versione database 6**
+**Versione applicazione 0.5.13 · versione database 6**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -14,7 +14,9 @@ presenze, inizialmente impostato su «Da confermare»; solo quelle confermate
 possono ricevere l'attestato senza ricostruire i questionari, dopo avere
 completato l'anagrafica e assegnato un modello DOCX.
 Gli avvii di produzione Linux e Windows controllano e applicano le migrazioni
-prima di mettere Waitress in ascolto.
+prima di mettere Waitress in ascolto. Se trovano la cifratura legacy, preservano
+la vecchia chiave, generano in modo riservato le nuove chiavi Fernet, creano un
+backup e ricifrano la password SMTP prima di rimuovere il fallback temporaneo.
 
 La specifica completa è in [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) e le
 decisioni tecniche in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

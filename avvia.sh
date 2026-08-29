@@ -62,8 +62,29 @@ python_executable="$project_root/.venv/bin/python"
 printf '[2/4] Controllo delle dipendenze...\n'
 "$python_executable" -m pip install --disable-pip-version-check -q --require-hashes -r requirements.lock
 
+secret_migration=0
+if [ "$mode" = "produzione" ]; then
+    printf 'Controllo della configurazione di cifratura...\n'
+    "$python_executable" -m mcorsi.startup_secrets prepare
+    if "$python_executable" -m mcorsi.startup_secrets pending; then
+        secret_migration=1
+        if "$python_executable" -m mcorsi.startup_secrets needs-backup; then
+            printf 'Backup di sicurezza prima della migrazione dei segreti...\n'
+            "$python_executable" -m flask --app wsgi backup create
+        fi
+    fi
+fi
+
 printf '[3/4] Aggiornamento del database...\n'
 "$python_executable" -m flask --app wsgi init-db
+
+if [ "$secret_migration" -eq 1 ]; then
+    if "$python_executable" -m mcorsi.startup_secrets needs-rotation; then
+        printf 'Ricifratura dei segreti persistiti...\n'
+        "$python_executable" -m flask --app wsgi admin rotate-encryption-key
+    fi
+    "$python_executable" -m mcorsi.startup_secrets complete
+fi
 
 printf '[4/4] Controllo dell’amministratore...\n'
 "$python_executable" -m flask --app wsgi admin bootstrap

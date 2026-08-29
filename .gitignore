@@ -12,6 +12,8 @@ pytest-cache-files-*/
 .idea/
 .vscode/
 .env
+.env.*
+!.env.example
 *.log
 ~$*
 
