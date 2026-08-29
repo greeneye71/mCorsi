@@ -19,6 +19,8 @@ def _environment_flag(name: str, default: bool = False) -> bool:
 class BaseConfig:
     SECRET_KEY = os.environ.get("MCORSI_SECRET_KEY", "development-only-change-me")
     ENCRYPTION_KEY = os.environ.get("MCORSI_ENCRYPTION_KEY", SECRET_KEY)
+    ENCRYPTION_PREVIOUS_KEYS = os.environ.get("MCORSI_ENCRYPTION_PREVIOUS_KEYS", "")
+    LEGACY_ENCRYPTION_KEY = os.environ.get("MCORSI_LEGACY_ENCRYPTION_KEY", "")
     OTP_PEPPER = os.environ.get("MCORSI_OTP_PEPPER", SECRET_KEY)
     MCP_TOKEN_PEPPER = os.environ.get("MCORSI_MCP_TOKEN_PEPPER", SECRET_KEY)
     MCP_PUBLIC_URL = os.environ.get("MCORSI_MCP_PUBLIC_URL", "http://127.0.0.1:8001/mcp")

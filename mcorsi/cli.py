@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
-import secrets
 import zipfile
 from flask import Flask, current_app
 from flask.cli import with_appcontext
@@ -12,12 +11,18 @@ from flask_migrate import upgrade
 from sqlalchemy.exc import IntegrityError
 
 from .extensions import db
-from .models import McpAccessToken, Role, User, normalize_email
+from .models import McpAccessToken, Role, SmtpConfiguration, User, normalize_email
 from .services.audit import record_event
 from .services.backup import create_backup, restore_backup, verify_backup
 from .services.mcp_access import MCP_SCOPES, create_access_token
 from .services.notifications import deliver_pending, enqueue_reminders
 from .services.passwords import PASSWORD_POLICY_MESSAGE, password_is_valid
+from .services.secrets import (
+    SecretDecryptionError,
+    generate_secret_values,
+    has_decryption_fallbacks,
+    rotate_secret,
+)
 from .services.versioning import ensure_system_version, version_information
 
 
@@ -208,10 +213,36 @@ def list_users() -> None:
 @admin_group.command("generate-secrets")
 def generate_secrets() -> None:
     """Genera i segreti distinti da copiare nel file .env."""
-    click.echo(f"MCORSI_SECRET_KEY={secrets.token_urlsafe(48)}")
-    click.echo(f"MCORSI_ENCRYPTION_KEY={secrets.token_urlsafe(48)}")
-    click.echo(f"MCORSI_OTP_PEPPER={secrets.token_urlsafe(48)}")
-    click.echo(f"MCORSI_MCP_TOKEN_PEPPER={secrets.token_urlsafe(48)}")
+    for name, value in generate_secret_values().items():
+        click.echo(f"{name}={value}")
+
+
+@admin_group.command("rotate-encryption-key")
+@with_appcontext
+def rotate_encryption_key() -> None:
+    """Ricifra i segreti persistiti con la chiave Fernet primaria."""
+    if not has_decryption_fallbacks():
+        raise click.ClickException(
+            "Configura MCORSI_ENCRYPTION_PREVIOUS_KEYS o MCORSI_LEGACY_ENCRYPTION_KEY."
+        )
+    configuration = db.session.get(SmtpConfiguration, 1)
+    if configuration is None or not configuration.password_encrypted:
+        click.echo("Nessuna password SMTP da ruotare.")
+        return
+    try:
+        configuration.password_encrypted = rotate_secret(
+            configuration.password_encrypted
+        )
+    except SecretDecryptionError as exc:
+        db.session.rollback()
+        raise click.ClickException(str(exc)) from exc
+    record_event(
+        "admin.encryption_key_rotated_cli",
+        target_type="smtp_configuration",
+        target_id=str(configuration.id),
+    )
+    db.session.commit()
+    click.echo("Password SMTP ricifrata con MCORSI_ENCRYPTION_KEY.")
 
 
 @click.group("mcp")

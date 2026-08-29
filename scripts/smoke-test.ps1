@@ -26,7 +26,7 @@ foreach ($Name in $EnvironmentNames) {
 }
 $env:MCORSI_ENV = "production"
 $env:MCORSI_SECRET_KEY = "smoke-test-secret-key-web-000000000001"
-$env:MCORSI_ENCRYPTION_KEY = "smoke-test-encryption-key-000000000002"
+$env:MCORSI_ENCRYPTION_KEY = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
 $env:MCORSI_OTP_PEPPER = "smoke-test-otp-pepper-000000000000003"
 $env:MCORSI_MCP_TOKEN_PEPPER = "smoke-test-mcp-token-pepper-000000004"
 $env:MCORSI_WEB_HOST = "0.0.0.0"

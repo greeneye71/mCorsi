@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.3 · versione database 4**
+**Versione applicazione 0.5.4 · versione database 4**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -184,8 +184,11 @@ MCORSI_MCP_TOKEN_PEPPER=...
 ```
 
 L'applicazione rifiuta l'avvio in produzione se le quattro chiavi non sono
-configurate separatamente e con almeno 32 caratteri. Modificare `MCORSI_ENCRYPTION_KEY` dopo aver salvato
-la password SMTP renderebbe necessario reinserire tale password.
+configurate separatamente e con almeno 32 caratteri. `MCORSI_ENCRYPTION_KEY`
+deve inoltre essere una chiave Fernet valida; `python -m mcorsi.generate_secrets`
+la genera nel formato corretto anche prima che l'applicazione sia configurata.
+Per sostituirla senza perdere la password SMTP seguire la
+procedura di rotazione descritta in `docs/DEPLOYMENT.md`.
 
 ## Comandi amministrativi
 
@@ -195,6 +198,8 @@ python -m flask --app wsgi admin create-operator
 python -m flask --app wsgi admin set-password nome@example.it
 python -m flask --app wsgi admin disable-user nome@example.it
 python -m flask --app wsgi admin list-users
+python -m flask --app wsgi admin generate-secrets
+python -m flask --app wsgi admin rotate-encryption-key
 python -m flask --app wsgi mcp token-list
 python -m flask --app wsgi version
 ```

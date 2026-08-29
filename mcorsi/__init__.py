@@ -10,6 +10,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from .cli import register_commands
 from .config import CONFIGS
 from .extensions import csrf, db, login_manager, migrate
+from .services.secrets import is_fernet_key
 from .version import APP_VERSION, DATABASE_VERSION
 
 
@@ -41,6 +42,15 @@ def create_app(config_name: str = "production", test_config: dict | None = None)
             for name, value in configured_secrets.items()
             if value in placeholder_secrets or len(value) < 32
         )
+        if not is_fernet_key(app.config["ENCRYPTION_KEY"]):
+            insecure.append("MCORSI_ENCRYPTION_KEY")
+        previous_keys = app.config.get("ENCRYPTION_PREVIOUS_KEYS", "")
+        if any(
+            not is_fernet_key(value.strip())
+            for value in previous_keys.split(",")
+            if value.strip()
+        ):
+            insecure.append("MCORSI_ENCRYPTION_PREVIOUS_KEYS")
         if len(set(configured_secrets.values())) != len(configured_secrets):
             insecure.extend(configured_secrets)
         insecure = sorted(set(insecure))

@@ -18,8 +18,8 @@ server MCP rimane vincolato a localhost.
 
 1. Installare Python 3.11+, LibreOffice e `cloudflared`.
 2. Creare l'ambiente virtuale e installare `requirements.txt`.
-3. Copiare `.env.example` in `.env` e generare i segreti con
-   `python -m flask --app wsgi admin generate-secrets`.
+3. Copiare `.env.example` in `.env`, generare i segreti con
+   `python -m mcorsi.generate_secrets` e sostituire i quattro valori di esempio.
 4. Impostare percorsi assoluti per database, storage e backup.
 5. Eseguire `python -m flask --app wsgi init-db` e creare l'amministratore.
 6. Verificare `http://127.0.0.1:5100/health/ready` dopo l'avvio.
@@ -42,6 +42,33 @@ MCORSI_MCP_PORT=8001
 MCORSI_MCP_PUBLIC_URL=https://mcp.example.it/mcp
 MCORSI_MCP_ALLOWED_HOSTS=mcp.example.it,127.0.0.1:8001,localhost:8001
 ```
+
+`MCORSI_ENCRYPTION_KEY` deve essere una chiave Fernet generata da
+`python -m mcorsi.generate_secrets`, non una passphrase scelta manualmente.
+
+### Rotazione della chiave Fernet
+
+1. Creare una nuova chiave con `python -m mcorsi.generate_secrets`, conservando
+   dal risultato soltanto la nuova `MCORSI_ENCRYPTION_KEY` e senza modificare
+   gli altri segreti.
+2. Impostare la nuova chiave in `MCORSI_ENCRYPTION_KEY` e la precedente in
+   `MCORSI_ENCRYPTION_PREVIOUS_KEYS`, quindi riavviare il servizio.
+3. Eseguire `flask admin rotate-encryption-key` e verificare l'invio di una mail
+   SMTP di prova.
+4. Rimuovere `MCORSI_ENCRYPTION_PREVIOUS_KEYS` e riavviare nuovamente.
+
+Per il passaggio da una release precedente alla 0.5.4, preparare le variabili
+prima del primo avvio del nuovo codice. Conservare il vecchio valore in
+`MCORSI_LEGACY_ENCRYPTION_KEY` e generare la nuova chiave indipendentemente con:
+
+```text
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Inserire il risultato in `MCORSI_ENCRYPTION_KEY`, avviare la 0.5.4, eseguire
+`flask admin rotate-encryption-key`, verificare SMTP e infine rimuovere la
+variabile legacy. Le chiavi precedenti e legacy sono usate esclusivamente per
+decifrare e ruotare; ogni nuova cifratura usa sempre la chiave primaria.
 
 ## Linux con systemd
 
@@ -201,10 +228,11 @@ Creare un backup, fermare il servizio, aggiornare codice e dipendenze, quindi
 riavviare. Gli script di produzione applicano automaticamente `flask init-db`
 prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
-`MCORSI_ENCRYPTION_KEY` senza
-reinserire la password SMTP cifrata con la chiave precedente.
+`MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.3 richiede la versione database 4. La migrazione introduce la
+La release 0.5.4 richiede la versione database 4. Non introduce modifiche allo
+schema; rende obbligatoria una chiave Fernet valida e offre la procedura di
+rotazione descritta sopra. La migrazione della release 0.5.3 introduce la
 verifica esplicita delle associazioni tra partecipanti e aziende, mantenendo
 come verificate le associazioni già presenti. La precedente migrazione identifica i
 corsi storici e aggiorna anche quelli già importati, consentendo l'emissione
