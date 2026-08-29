@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.14 · versione database 6**
+**Versione applicazione 0.5.15 · versione database 6**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -20,6 +20,9 @@ backup e ricifrano la password SMTP prima di rimuovere il fallback temporaneo.
 I valori legacy mancanti, predefiniti o duplicati per sessioni, OTP e token MCP
 vengono sostituiti automaticamente; le credenziali temporanee collegate ai
 vecchi valori devono quindi essere emesse nuovamente.
+I launcher interattivi `avvia.sh` e `avvia.cmd` supportano l'accesso HTTP diretto
+da una rete interna fidata; i launcher di deployment mantengono invece cookie
+`Secure` e richiedono un endpoint HTTPS.
 
 La specifica completa è in [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) e le
 decisioni tecniche in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

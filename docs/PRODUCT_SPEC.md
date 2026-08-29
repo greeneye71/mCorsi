@@ -1,7 +1,7 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.5.14
+Versione applicazione: 0.5.15
 Versione database: 6
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
@@ -90,7 +90,8 @@ Una stessa identità email può avere più ruoli.
 - password di almeno 8 caratteri con maiuscola, minuscola, numero e carattere
   speciale, memorizzata con hashing robusto;
 - reimpostazione da amministratore e, successivamente, recupero via email;
-- sessioni protette, cookie Secure/HttpOnly/SameSite e protezione CSRF;
+- sessioni protette, cookie HttpOnly/SameSite, flag Secure sugli endpoint HTTPS e
+  protezione CSRF; l'HTTP diretto è limitato al launcher esplicito per LAN fidate;
 - blocco temporaneo e rate limiting dopo ripetuti errori;
 - disattivazione senza cancellazione dell'account.
 

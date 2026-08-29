@@ -73,3 +73,16 @@ def test_generic_launchers_fail_closed_and_development_is_local_by_default():
     assert "127.0.0.1" in windows_launcher
     assert "default_host=127.0.0.1" in linux_launcher
     assert 'os.environ.get("MCORSI_ENV", "production")' in wsgi
+
+
+def test_direct_launchers_explicitly_support_trusted_lan_http():
+    windows_launcher = _read("avvia.cmd")
+    linux_launcher = _read("avvia.sh")
+
+    for launcher in (windows_launcher, linux_launcher):
+        assert "MCORSI_COOKIE_SECURE=false" in launcher
+        assert "rete interna fidata" in launcher
+        assert "MCORSI_COOKIE_SECURE=true" in launcher
+
+    assert "MCORSI_COOKIE_SECURE=false" not in _read("scripts/run-production.sh")
+    assert "MCORSI_COOKIE_SECURE=false" not in _read("scripts/run-production.ps1")

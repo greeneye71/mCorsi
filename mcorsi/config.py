@@ -74,8 +74,8 @@ class DevelopmentConfig(BaseConfig):
 class ProductionConfig(BaseConfig):
     ENV = "production"
     DEBUG = False
-    SESSION_COOKIE_SECURE = True
-    REMEMBER_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = _environment_flag("MCORSI_COOKIE_SECURE", True)
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
 
 
 class TestingConfig(BaseConfig):

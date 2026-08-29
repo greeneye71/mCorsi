@@ -14,6 +14,13 @@ usa 8001. Indirizzo e porta web si modificano con gli argomenti dei launcher o
 con `MCORSI_WEB_HOST` e `MCORSI_WEB_PORT`; `MCORSI_MCP_PORT` resta separata. Il
 server MCP rimane vincolato a localhost.
 
+I launcher interattivi `avvia.sh` e `avvia.cmd` servono direttamente HTTP e
+impostano `MCORSI_COOKIE_SECURE=false`, mostrando un avviso: questa modalità è
+adatta soltanto a una rete interna fidata. I launcher `scripts/run-production.*`
+mantengono il valore sicuro predefinito e sono destinati a un endpoint HTTPS,
+per esempio tramite Cloudflare Tunnel. Per forzare HTTPS anche con il launcher
+interattivo, impostare `MCORSI_COOKIE_SECURE=true` nell'ambiente del comando.
+
 ## Preparazione comune
 
 1. Installare Python 3.11+, LibreOffice e `cloudflared`.
@@ -40,6 +47,7 @@ MCORSI_BACKUP_PATH=/var/backups/mcorsi
 MCORSI_LIBREOFFICE_PATH=/usr/bin/libreoffice
 MCORSI_WEB_HOST=0.0.0.0
 MCORSI_WEB_PORT=5100
+MCORSI_COOKIE_SECURE=true
 MCORSI_MCP_PORT=8001
 MCORSI_MCP_PUBLIC_URL=https://mcp.example.it/mcp
 MCORSI_MCP_ALLOWED_HOSTS=mcp.example.it,127.0.0.1:8001,localhost:8001
@@ -258,6 +266,7 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
+La release 0.5.15 rende coerenti cookie e protocollo nei launcher HTTP per LAN.
 La release 0.5.14 estende la migrazione automatica ai segreti legacy di sessione,
 OTP e MCP. La release 0.5.13 automatizza in modo fail-safe la migrazione delle
 chiavi di cifratura durante l'avvio in produzione. La release 0.5.12 richiede di

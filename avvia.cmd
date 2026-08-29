@@ -43,11 +43,26 @@ if not exist ".venv\Scripts\python.exe" (
 
 set "PYTHON=%CD%\.venv\Scripts\python.exe"
 if /I "%MODALITA%"=="test" set "MCORSI_ENV=development"
-if /I "%MODALITA%"=="produzione" set "MCORSI_ENV=production"
+if /I "%MODALITA%"=="produzione" (
+    set "MCORSI_ENV=production"
+    if not defined MCORSI_COOKIE_SECURE set "MCORSI_COOKIE_SECURE=false"
+)
 set "MCORSI_PORT=%PORTA%"
 set "MCORSI_HOST=%INDIRIZZO%"
 set "MCORSI_WEB_HOST=%INDIRIZZO%"
 set "MCORSI_WEB_PORT=%PORTA%"
+
+set "AVVISO_HTTP=0"
+if /I "%MODALITA%"=="produzione" set "AVVISO_HTTP=1"
+if /I "%MCORSI_COOKIE_SECURE%"=="true" set "AVVISO_HTTP=0"
+if /I "%MCORSI_COOKIE_SECURE%"=="yes" set "AVVISO_HTTP=0"
+if /I "%MCORSI_COOKIE_SECURE%"=="on" set "AVVISO_HTTP=0"
+if "%MCORSI_COOKIE_SECURE%"=="1" set "AVVISO_HTTP=0"
+if "%AVVISO_HTTP%"=="1" (
+    echo ATTENZIONE: accesso HTTP diretto; usare soltanto su una rete interna fidata.
+    echo Per l'esposizione pubblica configura HTTPS e MCORSI_COOKIE_SECURE=true.
+    echo.
+)
 
 echo [2/4] Controllo delle dipendenze...
 "%PYTHON%" -m pip install --disable-pip-version-check -q --require-hashes -r requirements.lock

@@ -16,6 +16,9 @@ esac
 
 if [ "$mode" = "produzione" ]; then
     export MCORSI_ENV=production
+    if [ -z "${MCORSI_COOKIE_SECURE+x}" ]; then
+        export MCORSI_COOKIE_SECURE=false
+    fi
 else
     export MCORSI_ENV=development
 fi
@@ -41,6 +44,15 @@ printf '\n========================================\n'
 printf '         Avvio di mCorsi\n'
 printf '========================================\n\n'
 printf 'Modalità: %s - Ascolto: %s:%s\n\n' "$mode" "$host" "$port"
+if [ "$mode" = "produzione" ]; then
+    case "$MCORSI_COOKIE_SECURE" in
+        1|true|TRUE|yes|YES|on|ON) ;;
+        *)
+            printf 'ATTENZIONE: accesso HTTP diretto; usare soltanto su una rete interna fidata.\n'
+            printf 'Per l’esposizione pubblica configura HTTPS e MCORSI_COOKIE_SECURE=true.\n\n'
+            ;;
+    esac
+fi
 
 if [ ! -x ".venv/bin/python" ]; then
     printf '[1/4] Creazione dell’ambiente Python...\n'

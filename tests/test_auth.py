@@ -68,6 +68,16 @@ def test_operator_can_login_with_csrf_enabled_from_lan(app, client):
     assert response.headers["Location"] == "/"
 
 
+def test_secure_session_cookie_is_marked_for_https_only(app, client):
+    app.config.update(WTF_CSRF_ENABLED=True, SESSION_COOKIE_SECURE=True)
+    _staff(app)
+    base_url = "http://192.0.2.10:5100"
+    login_page = client.get("/auth/login", base_url=base_url)
+    match = re.search(rb'name="csrf_token"[^>]*value="([^"]+)"', login_page.data)
+    assert match is not None
+    assert "Secure" in login_page.headers["Set-Cookie"]
+
+
 def test_participant_cannot_use_password_login(app, client):
     _staff(app, role="participant")
     response = client.post(
