@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import secrets
 import shutil
 import sys
 from pathlib import Path
@@ -51,20 +52,43 @@ def _effective(values: dict[str, str], name: str, default: str = "") -> str:
     return os.environ.get(name, values.get(name, default))
 
 
-def _validate_stable_secrets(values: dict[str, str]) -> None:
-    configured = {name: _effective(values, name) for name in STABLE_SECRET_NAMES}
-    invalid = [
-        name
-        for name, value in configured.items()
-        if value in PLACEHOLDER_SECRETS or len(value) < 32
-    ]
-    if len(set(configured.values())) != len(configured):
-        invalid.extend(configured)
-    if invalid:
-        raise StartupSecretError(
-            "La migrazione automatica non modifica segreti di sessione, OTP o MCP. "
-            "Configura valori lunghi e distinti per: " + ", ".join(sorted(set(invalid)))
+def _stable_secret_changes(
+    values: dict[str, str],
+) -> tuple[dict[str, str], dict[str, str]]:
+    secret_key = _effective(
+        values, "MCORSI_SECRET_KEY", "development-only-change-me"
+    )
+    configured = {
+        "MCORSI_SECRET_KEY": secret_key,
+        "MCORSI_OTP_PEPPER": _effective(values, "MCORSI_OTP_PEPPER", secret_key),
+        "MCORSI_MCP_TOKEN_PEPPER": _effective(
+            values, "MCORSI_MCP_TOKEN_PEPPER", secret_key
+        ),
+    }
+    changes: dict[str, str] = {}
+    external_invalid: list[str] = []
+    accepted: set[str] = set()
+    for name in STABLE_SECRET_NAMES:
+        value = configured[name]
+        invalid = (
+            value in PLACEHOLDER_SECRETS or len(value) < 32 or value in accepted
         )
+        if invalid:
+            if name in os.environ:
+                external_invalid.append(name)
+            else:
+                replacement = secrets.token_urlsafe(48)
+                changes[name] = replacement
+                accepted.add(replacement)
+        else:
+            accepted.add(value)
+    if external_invalid:
+        raise StartupSecretError(
+            "Questi segreti non sicuri provengono dall'ambiente del processo e non "
+            "possono essere aggiornati nel file .env: "
+            + ", ".join(external_invalid)
+        )
+    return configured, changes
 
 
 def _backup_env(env_path: Path) -> Path | None:
@@ -125,13 +149,13 @@ def prepare_environment(
         raise StartupSecretError("Il file .env non può essere un collegamento simbolico.")
 
     values = _values(env_path)
-    _validate_stable_secrets(values)
-    secret_key = _effective(values, "MCORSI_SECRET_KEY")
+    stable_configured, changes = _stable_secret_changes(values)
+    secret_key = stable_configured["MCORSI_SECRET_KEY"]
     primary = _effective(values, "MCORSI_ENCRYPTION_KEY", secret_key)
     backup_key = _effective(values, "MCORSI_BACKUP_ENCRYPTION_KEY")
     legacy = _effective(values, "MCORSI_LEGACY_ENCRYPTION_KEY")
-    stable_values = {_effective(values, name) for name in STABLE_SECRET_NAMES}
-    changes: dict[str, str] = {}
+    stable_values = set(stable_configured.values())
+    stable_changes = set(changes)
     remove_legacy = False
     primary_requires_migration = (
         not is_fernet_key(primary)
@@ -219,6 +243,11 @@ def prepare_environment(
             env_path.unlink(missing_ok=True)
         raise
     print("Configurazione di cifratura aggiornata senza esporre i nuovi segreti.")
+    if stable_changes:
+        print(
+            "Rigenerati segreti di sessione/OTP/MCP non sicuri; sessioni, codici "
+            "attivi e token MCP collegati ai valori precedenti non saranno più validi."
+        )
     if backup_path:
         print(f"Copia protetta della configurazione: {backup_path.name}")
     return True

@@ -94,6 +94,79 @@ def test_prepare_migrates_legacy_key_and_marks_backup_and_rotation(
     assert not marker_path.exists()
 
 
+def test_prepare_generates_missing_otp_and_mcp_secrets(startup_root, monkeypatch):
+    _clear_environment(monkeypatch)
+    env_path = startup_root / ".env"
+    marker_path = startup_root / "instance" / ".secret-migration.json"
+    old_secret = "segreto-sessione-legacy-" + "s" * 32
+    env_path.write_text(
+        f"MCORSI_SECRET_KEY='{old_secret}'\n",
+        encoding="utf-8",
+    )
+
+    assert prepare_environment(env_path, marker_path, startup_root) is True
+
+    values = dotenv_values(env_path)
+    configured = {
+        values["MCORSI_SECRET_KEY"],
+        values["MCORSI_OTP_PEPPER"],
+        values["MCORSI_MCP_TOKEN_PEPPER"],
+        values["MCORSI_ENCRYPTION_KEY"],
+        values["MCORSI_BACKUP_ENCRYPTION_KEY"],
+    }
+    assert len(configured) == 5
+    assert values["MCORSI_SECRET_KEY"] == old_secret
+    assert len(values["MCORSI_OTP_PEPPER"]) >= 32
+    assert len(values["MCORSI_MCP_TOKEN_PEPPER"]) >= 32
+    assert values["MCORSI_LEGACY_ENCRYPTION_KEY"] == old_secret
+
+
+def test_prepare_replaces_placeholder_stable_secrets(startup_root, monkeypatch):
+    _clear_environment(monkeypatch)
+    env_path = startup_root / ".env"
+    marker_path = startup_root / "instance" / ".secret-migration.json"
+    env_path.write_text(
+        "\n".join(
+            [
+                "MCORSI_SECRET_KEY=cambia-questo-valore",
+                "MCORSI_OTP_PEPPER=usa-un-terzo-valore-lungo-e-casuale",
+                "MCORSI_MCP_TOKEN_PEPPER=usa-un-quarto-valore-lungo-e-casuale",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert prepare_environment(env_path, marker_path, startup_root) is True
+
+    values = dotenv_values(env_path)
+    stable_values = [values[name] for name in startup_secrets.STABLE_SECRET_NAMES]
+    assert all(len(value) >= 32 for value in stable_values)
+    assert len(set(stable_values)) == len(stable_values)
+    assert values["MCORSI_LEGACY_ENCRYPTION_KEY"] == "cambia-questo-valore"
+
+
+def test_prepare_creates_a_secure_env_when_it_is_missing(startup_root, monkeypatch):
+    _clear_environment(monkeypatch)
+    env_path = startup_root / ".env"
+    marker_path = startup_root / "instance" / ".secret-migration.json"
+
+    assert prepare_environment(env_path, marker_path, startup_root) is True
+
+    values = dotenv_values(env_path)
+    configured = [
+        values["MCORSI_SECRET_KEY"],
+        values["MCORSI_ENCRYPTION_KEY"],
+        values["MCORSI_BACKUP_ENCRYPTION_KEY"],
+        values["MCORSI_OTP_PEPPER"],
+        values["MCORSI_MCP_TOKEN_PEPPER"],
+    ]
+    assert all(len(value) >= 32 for value in configured)
+    assert len(set(configured)) == len(configured)
+    assert values["MCORSI_LEGACY_ENCRYPTION_KEY"] == "development-only-change-me"
+    assert not (startup_root / ".env.pre-secret-migration").exists()
+
+
 def test_prepare_adds_only_backup_key_when_primary_is_already_valid(
     startup_root, monkeypatch
 ):
@@ -139,6 +212,27 @@ def test_prepare_refuses_to_override_an_invalid_process_secret(
     _write_env(env_path, encryption_key=Fernet.generate_key().decode("ascii"))
     original = env_path.read_text(encoding="utf-8")
     monkeypatch.setenv("MCORSI_ENCRYPTION_KEY", "chiave-esterna-non-valida")
+
+    with pytest.raises(StartupSecretError, match="ambiente del processo"):
+        prepare_environment(env_path, marker_path, startup_root)
+
+    assert env_path.read_text(encoding="utf-8") == original
+    assert not marker_path.exists()
+
+
+def test_prepare_refuses_to_override_an_invalid_stable_process_secret(
+    startup_root, monkeypatch
+):
+    _clear_environment(monkeypatch)
+    env_path = startup_root / ".env"
+    marker_path = startup_root / "instance" / ".secret-migration.json"
+    _write_env(
+        env_path,
+        encryption_key=Fernet.generate_key().decode("ascii"),
+        backup_key=Fernet.generate_key().decode("ascii"),
+    )
+    original = env_path.read_text(encoding="utf-8")
+    monkeypatch.setenv("MCORSI_OTP_PEPPER", "pepper-esterno-corto")
 
     with pytest.raises(StartupSecretError, match="ambiente del processo"):
         prepare_environment(env_path, marker_path, startup_root)
