@@ -177,6 +177,11 @@ class NotificationConfiguration(db.Model):
 
 class EmailOutbox(db.Model):
     __tablename__ = "email_outbox"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('pending', 'sent', 'failed')", name="ck_email_outbox_status"
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
     message_type = db.Column(db.String(50), nullable=False, index=True)
@@ -218,6 +223,15 @@ class OneTimeCode(db.Model):
 
 class Company(db.Model):
     __tablename__ = "companies"
+    __table_args__ = (
+        db.CheckConstraint(
+            "verification_status IN ('pending', 'verified', 'rejected')",
+            name="ck_companies_verification_status",
+        ),
+        db.CheckConstraint(
+            "source IN ('operator', 'participant')", name="ck_companies_source"
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
     business_name = db.Column(db.String(240), nullable=False, index=True)
@@ -289,6 +303,10 @@ class Employment(db.Model):
         db.UniqueConstraint(
             "participant_user_id", "company_id", "started_on", name="uq_employment_period"
         ),
+        db.CheckConstraint(
+            "verification_status IN ('pending', 'verified', 'rejected')",
+            name="ck_employments_verification_status",
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
@@ -344,6 +362,16 @@ class CompanyContact(db.Model):
 
 class Course(db.Model):
     __tablename__ = "courses"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('draft', 'open', 'in_progress', 'completed', 'canceled', 'archived')",
+            name="ck_courses_status",
+        ),
+        db.CheckConstraint(
+            "delivery_mode IN ('online', 'in_person', 'hybrid')",
+            name="ck_courses_delivery_mode",
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
     title = db.Column(db.String(240), nullable=False, index=True)
@@ -507,6 +535,10 @@ class AdmissionRequest(db.Model):
     __tablename__ = "admission_requests"
     __table_args__ = (
         db.UniqueConstraint("course_id", "participant_user_id", name="uq_course_admission_participant"),
+        db.CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')",
+            name="ck_admission_requests_status",
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
@@ -539,6 +571,10 @@ class Enrollment(db.Model):
     __tablename__ = "enrollments"
     __table_args__ = (
         db.UniqueConstraint("course_id", "participant_user_id", name="uq_course_enrollment_participant"),
+        db.CheckConstraint(
+            "attendance_status IN ('pending', 'attended', 'absent')",
+            name="ck_enrollments_attendance_status",
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
@@ -562,6 +598,17 @@ class Enrollment(db.Model):
 
 class Certificate(db.Model):
     __tablename__ = "certificates"
+    __table_args__ = (
+        db.CheckConstraint(
+            "source IN ('generated', 'participant_upload')",
+            name="ck_certificates_source",
+        ),
+        db.CheckConstraint(
+            "verification_status IN ('pending', 'verified')",
+            name="ck_certificates_verification_status",
+        ),
+        db.CheckConstraint("status IN ('valid')", name="ck_certificates_status"),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
     course_id = db.Column(
@@ -607,6 +654,12 @@ class Certificate(db.Model):
 
 class ImportBatch(db.Model):
     __tablename__ = "import_batches"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('preview', 'completed', 'completed_with_errors')",
+            name="ck_import_batches_status",
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
     stored_file_id = db.Column(
@@ -636,6 +689,12 @@ class ImportBatch(db.Model):
 
 class ImportRow(db.Model):
     __tablename__ = "import_rows"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('ready', 'error', 'skipped', 'imported')",
+            name="ck_import_rows_status",
+        ),
+    )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)
     batch_id = db.Column(
@@ -715,6 +774,9 @@ class Question(db.Model):
     __tablename__ = "questions"
     __table_args__ = (
         db.UniqueConstraint("questionnaire_id", "sort_order", name="uq_questionnaire_question_order"),
+        db.CheckConstraint(
+            "response_type IN ('single', 'multiple')", name="ck_questions_response_type"
+        ),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=new_uuid)

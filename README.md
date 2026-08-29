@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.8 · versione database 5**
+**Versione applicazione 0.5.9 · versione database 6**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,

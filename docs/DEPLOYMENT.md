@@ -250,9 +250,12 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.8 mantiene la versione database 5 e rende riproducibili le
-installazioni usando lockfile con hash; i launcher rifiutano pacchetti diversi
-da quelli approvati. La release 0.5.7 ha introdotto la scadenza dei tentativi:
+La release 0.5.9 porta il database alla versione 6 e vincola nello schema tutti
+gli stati categoriali; la migrazione si interrompe indicando tabella, colonna e
+valori da correggere se trova dati storici non riconosciuti. La release 0.5.8
+rende riproducibili le installazioni usando lockfile con hash; i launcher
+rifiutano pacchetti diversi da quelli approvati. La release 0.5.7 ha introdotto
+la scadenza dei tentativi:
 i tentativi di questionario
 aperti prima della migrazione vengono chiusi e conteggiati come consumati. I
 nuovi tentativi scadono dopo 60 minuti, valore modificabile con

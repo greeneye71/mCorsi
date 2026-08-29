@@ -1,8 +1,8 @@
 # mCorsi — specifica di prodotto
 
 Stato: prima release completata
-Versione applicazione: 0.5.8
-Versione database: 5
+Versione applicazione: 0.5.9
+Versione database: 6
 Lingua iniziale: italiano
 Fuso orario predefinito: Europe/Rome
 
