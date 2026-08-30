@@ -144,14 +144,58 @@ New-NetFirewallRule -DisplayName "mCorsi test 5100" -Direction Inbound `
 ```
 
 Su Linux autorizzare la porta solo sulla rete privata usando il firewall della
-distribuzione. L'accesso HTTP diretto è previsto per la modalità `test` e solo
-su una rete fidata. In produzione i cookie sono marcati Secure: usare
-l'hostname HTTPS di Cloudflare Tunnel o un reverse proxy TLS e non inoltrare le
-porta 5100 sul router.
+distribuzione. I launcher interattivi consentono l'HTTP diretto anche in
+produzione, mostrano un avviso e disabilitano esplicitamente il flag Secure dei
+cookie: usarli soltanto su una LAN fidata. I launcher di deployment mantengono
+cookie Secure; raggiungerli tramite l'hostname HTTPS di Cloudflare Tunnel o un
+reverse proxy TLS e non inoltrare la porta 5100 sul router.
 
 L'account selezionato deve avere il diritto di esecuzione all'avvio e accesso
 ai percorsi configurati. Per un server non presidiato è preferibile Linux con
 systemd o un account di servizio Windows dedicato.
+
+## Recupero dell'accesso amministrativo
+
+Le password di amministratori e operatori sono salvate come hash robusti e non
+sono recuperabili in chiaro. Il possesso del server consente di sostituirle
+tramite la CLI locale. Non modificare direttamente il database e non inserire
+mai la nuova password nella riga di comando o nella cronologia della shell.
+
+1. Aprire una seconda sessione SSH o un altro terminale nella cartella del
+   progetto. Se il database segnala un blocco, arrestare temporaneamente mCorsi
+   con `CTRL+C` o tramite il gestore del servizio.
+2. Elencare gli utenti per individuare email, ruoli e stato dell'account.
+3. Reimpostare la password dell'amministratore o dell'operatore interessato. Il
+   prompt nascosto la richiede due volte.
+4. Accedere nuovamente e verificare l'evento di cambio password nell'audit log.
+
+Linux:
+
+```bash
+cd /percorso/di/mCorsi
+.venv/bin/python -m flask --app wsgi admin list-users
+.venv/bin/python -m flask --app wsgi admin set-password nome@example.it
+```
+
+Windows, da PowerShell:
+
+```powershell
+Set-Location C:\percorso\di\mCorsi
+.\.venv\Scripts\python.exe -m flask --app wsgi admin list-users
+.\.venv\Scripts\python.exe -m flask --app wsgi admin set-password nome@example.it
+```
+
+La nuova password deve avere da 12 a 128 caratteri e includere maiuscole,
+minuscole, numeri e caratteri speciali. Se `list-users` indica che l'account è
+disabilitato, `set-password` non lo riattiva: creare un nuovo amministratore con
+un'email differente usando `admin create`, quindi gestire il vecchio account
+dall'interfaccia amministrativa. Partecipanti e referenti aziendali non usano
+password: richiedono un nuovo codice OTP dalla rispettiva pagina di accesso.
+
+La password SMTP è un segreto distinto: dopo avere recuperato l'accesso, può
+essere sostituita nella configurazione SMTP. Le chiavi `MCORSI_*` nel file
+`.env` non sono password utente e non devono essere rigenerate come procedura di
+recupero; ripristinarle dalla copia protetta o dal gestore dei segreti.
 
 ## Cloudflare Tunnel
 
@@ -266,7 +310,9 @@ prima di Waitress; eseguire `flask version` per conferma. Controllare
 `/health/ready`, la pagina degli operatori e la coda email. Non cambiare
 `MCORSI_ENCRYPTION_KEY` senza seguire la procedura di rotazione documentata.
 
-La release 0.5.15 rende coerenti cookie e protocollo nei launcher HTTP per LAN.
+La release 0.5.16 documenta la procedura locale di recupero amministrativo e la
+policy password effettiva. La release 0.5.15 rende coerenti cookie e protocollo
+nei launcher HTTP per LAN.
 La release 0.5.14 estende la migrazione automatica ai segreti legacy di sessione,
 OTP e MCP. La release 0.5.13 automatizza in modo fail-safe la migrazione delle
 chiavi di cifratura durante l'avvio in produzione. La release 0.5.12 richiede di

@@ -1,6 +1,6 @@
 # mCorsi
 
-**Versione applicazione 0.5.15 · versione database 6**
+**Versione applicazione 0.5.16 · versione database 6**
 
 Web application Flask, mobile-first, per amministrare corsi, partecipanti,
 questionari e attestati. La versione corrente contiene l'architettura modulare,
@@ -102,10 +102,10 @@ Indirizzo e porta web sono unici per entrambe le modalità e possono essere
 configurati con `MCORSI_WEB_HOST` e `MCORSI_WEB_PORT`. `MCORSI_MCP_PORT`
 configura invece il processo MCP separato.
 
-L'eventuale accesso diretto dalla LAN in modalità `test` usa HTTP non cifrato: va impiegato
-soltanto su una rete privata fidata. La modalità `produzione` mantiene i cookie
-Secure e deve essere raggiunta in HTTPS tramite Cloudflare Tunnel o un reverse
-proxy TLS; non aprire la porta web sul router.
+L'accesso HTTP diretto dei launcher interattivi usa cookie compatibili con la
+LAN e va impiegato soltanto su una rete privata fidata. I launcher di deployment
+mantengono cookie Secure e devono essere raggiunti in HTTPS tramite Cloudflare
+Tunnel o un reverse proxy TLS; non aprire la porta web sul router.
 
 ## Funzioni disponibili
 
@@ -216,8 +216,27 @@ python -m flask --app wsgi mcp token-list
 python -m flask --app wsgi version
 ```
 
-Le password devono contenere almeno 8 caratteri, una lettera maiuscola, una
-minuscola, un numero e un carattere speciale.
+Le password devono contenere da 12 a 128 caratteri, almeno una lettera
+maiuscola, una minuscola, un numero e un carattere speciale.
+
+### Password amministrativa dimenticata
+
+Le password di amministratori e operatori sono memorizzate soltanto come hash:
+non possono essere lette o recuperate in chiaro. Dalla cartella del progetto,
+elencare gli account e impostare una nuova password senza inserirla nella riga
+di comando:
+
+```bash
+.venv/bin/python -m flask --app wsgi admin list-users
+.venv/bin/python -m flask --app wsgi admin set-password nome@example.it
+```
+
+Su Windows sostituire l'eseguibile con `.venv\Scripts\python.exe`. Il comando
+chiede la nuova password due volte senza mostrarla e registra la modifica
+nell'audit log. Se l'account risulta disabilitato, il reset non lo riattiva:
+creare un nuovo amministratore con `admin create` e un indirizzo differente.
+Partecipanti e referenti aziendali non hanno password e accedono tramite OTP.
+La procedura operativa completa è in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Versioni e migrazioni
 
