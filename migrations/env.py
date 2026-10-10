@@ -97,14 +97,38 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        # SQLite: batch_alter_table ricrea le tabelle con DROP + RENAME. Con
+        # foreign_keys=ON il DROP esegue ON DELETE CASCADE/SET NULL sulle
+        # tabelle figlie e cancella dati. Il PRAGMA va impostato fuori da
+        # transazione; l'integrità viene verificata alla fine.
+        is_sqlite = connection.dialect.name == "sqlite"
+        if is_sqlite:
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
             **conf_args
         )
 
-        with context.begin_transaction():
-            context.run_migrations()
+        try:
+            with context.begin_transaction():
+                context.run_migrations()
+            if is_sqlite:
+                violations = connection.exec_driver_sql(
+                    "PRAGMA foreign_key_check"
+                ).fetchall()
+                if violations:
+                    raise RuntimeError(
+                        "Migrazione completata con riferimenti non validi: "
+                        f"{violations[:10]}"
+                    )
+        finally:
+            if is_sqlite:
+                connection.commit()
+                connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+                connection.commit()
 
 
 if context.is_offline_mode():
