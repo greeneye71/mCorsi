@@ -8,6 +8,7 @@ Type=simple
 User=mcorsi
 Group=mcorsi
 WorkingDirectory=/opt/mcorsi
+Environment=MCORSI_INSTANCE_PATH=/var/lib/mcorsi/instance
 EnvironmentFile=/etc/mcorsi/mcorsi.env
 ExecStart=/opt/mcorsi/scripts/run-mcp.sh
 Restart=on-failure

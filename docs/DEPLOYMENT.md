@@ -36,6 +36,8 @@ e i cookie "ricordami" già emessi.
    `MCORSI_INSTANCE_PATH` (assoluto) la directory scrivibile `instance`, usata
    anche per lo staging dei backup e per il marker della migrazione dei
    segreti, esce dall'albero del codice: necessario con `ProtectSystem=strict`.
+   Le unit in `deploy/linux` impostano già `/var/lib/mcorsi/instance` e
+   `scripts/run-production.sh` si ferma se la directory non è scrivibile.
 5. Eseguire `python -m flask --app wsgi init-db` e creare l'amministratore.
 6. Verificare `http://127.0.0.1:5100/health/ready` dopo l'avvio.
 

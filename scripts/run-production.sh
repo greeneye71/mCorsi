@@ -8,6 +8,19 @@ export MCORSI_ENV=production
 web_host=${MCORSI_WEB_HOST:-0.0.0.0}
 web_port=${1:-${MCORSI_WEB_PORT:-5100}}
 cd "$project_root"
+instance_path=${MCORSI_INSTANCE_PATH:-$project_root/instance}
+case "$instance_path" in
+    /*) ;;
+    *) printf 'ERRORE: MCORSI_INSTANCE_PATH deve essere un percorso assoluto.
+' >&2; exit 2 ;;
+esac
+if ! mkdir -p "$instance_path" 2>/dev/null || [ ! -w "$instance_path" ]; then
+    printf 'ERRORE: directory instance non scrivibile: %s
+' "$instance_path" >&2
+    printf 'Impostare MCORSI_INSTANCE_PATH su una directory scrivibile, per esempio /var/lib/mcorsi/instance.
+' >&2
+    exit 2
+fi
 printf 'Controllo della configurazione di cifratura...\n'
 "$python_executable" -m mcorsi.startup_secrets prepare
 secret_migration=0
