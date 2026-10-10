@@ -19,6 +19,7 @@ from ..models import (
 from .audit import record_event
 from .certificates import course_date
 from .notifications import enqueue_reminders
+from .mcp_access import token_is_usable
 
 
 def require_scope(scope: str) -> McpAccessToken:
@@ -26,7 +27,7 @@ def require_scope(scope: str) -> McpAccessToken:
     if principal is None or scope not in principal.scopes:
         raise PermissionError(f"Il token non dispone del permesso {scope}.")
     access = db.session.get(McpAccessToken, principal.client_id)
-    if access is None or not access.is_active:
+    if access is None or not token_is_usable(access):
         raise PermissionError("Il token MCP non è più attivo.")
     return access
 
@@ -53,13 +54,18 @@ def list_courses_data(*, status: str | None = None, upcoming_only: bool = False,
     query = Course.query
     if status:
         query = query.filter(Course.status == status)
-    courses = query.order_by(Course.created_at.desc()).limit(max(1, min(limit, 100))).all()
+    limit = max(1, min(limit, 100))
+    query = query.order_by(Course.created_at.desc())
+    if not upcoming_only:
+        query = query.limit(limit)
     today = date.today()
     items = []
-    for course in courses:
+    for course in query:
         day = course_date(course) if course.first_session else None
         if upcoming_only and (day is None or day < today):
             continue
+        if len(items) >= limit:
+            break
         items.append(
             {
                 "code": course.code,

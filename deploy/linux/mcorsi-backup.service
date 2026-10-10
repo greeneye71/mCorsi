@@ -6,6 +6,7 @@ Type=oneshot
 User=mcorsi
 Group=mcorsi
 WorkingDirectory=/opt/mcorsi
+Environment=MCORSI_INSTANCE_PATH=/var/lib/mcorsi/instance
 EnvironmentFile=/etc/mcorsi/mcorsi.env
 ExecStart=/opt/mcorsi/.venv/bin/python -m flask --app wsgi backup create
 NoNewPrivileges=true

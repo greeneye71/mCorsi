@@ -52,6 +52,20 @@ def _effective(values: dict[str, str], name: str, default: str = "") -> str:
     return os.environ.get(name, values.get(name, default))
 
 
+def _instance_path(values: dict[str, str], project_root: Path) -> Path:
+    configured = _effective(values, "MCORSI_INSTANCE_PATH").strip()
+    if not configured:
+        return project_root / "instance"
+    path = Path(configured)
+    if not path.is_absolute():
+        raise StartupSecretError("MCORSI_INSTANCE_PATH deve essere un percorso assoluto.")
+    return path
+
+
+def _default_marker_path(env_path: Path = DEFAULT_ENV_PATH) -> Path:
+    return _instance_path(_values(env_path), PROJECT_ROOT) / DEFAULT_MARKER_PATH.name
+
+
 def _stable_secret_changes(
     values: dict[str, str],
 ) -> tuple[dict[str, str], dict[str, str]]:
@@ -107,7 +121,7 @@ def _backup_env(env_path: Path) -> Path | None:
 
 
 def _database_exists(values: dict[str, str], project_root: Path) -> bool:
-    default_path = project_root / "instance" / "mcorsi-v2.sqlite3"
+    default_path = _instance_path(values, project_root) / "mcorsi-v2.sqlite3"
     uri = _effective(values, "MCORSI_DATABASE_URL", f"sqlite:///{default_path}")
     prefix = "sqlite:///"
     if not uri.startswith(prefix) or uri.endswith(":memory:"):
@@ -297,17 +311,18 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     try:
+        marker_path = _default_marker_path()
         if args.command == "prepare":
-            prepare_environment()
+            prepare_environment(marker_path=marker_path)
             return 0
-        marker = _marker(DEFAULT_MARKER_PATH)
+        marker = _marker(marker_path)
         if args.command == "pending":
             return 0 if marker is not None else 1
         if args.command == "needs-backup":
             return 0 if marker and marker.get("backup_required") else 1
         if args.command == "needs-rotation":
             return 0 if marker and marker.get("rotation_required") else 1
-        complete_environment()
+        complete_environment(marker_path=marker_path)
         return 0
     except StartupSecretError as exc:
         print(f"ERRORE: {exc}", file=sys.stderr)

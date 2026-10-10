@@ -1,0 +1,96 @@
+{
+  "S01_password_session": {
+    "after_password_reset": 200,
+    "old_remember_cookie": 200,
+    "while_disabled": 302,
+    "old_cookie_after_reenable": 200
+  },
+  "S02_mcp_disabled_owner": {
+    "token_accepted": true,
+    "http": 200,
+    "tool_error": false
+  },
+  "S03_otp_reuse": {
+    "valid_code": true,
+    "outcomes": [
+      "success",
+      "success"
+    ],
+    "persisted_attempts": 1
+  },
+  "S03_otp_lost_attempt": {
+    "valid_code": false,
+    "outcomes": [
+      "OtpError",
+      "OtpError"
+    ],
+    "persisted_attempts": 1
+  },
+  "B01_inactive_primary_contact": {
+    "error": "IntegrityError",
+    "cause": "uq_company_contact_user"
+  },
+  "B02_mixed_portal_roles": {
+    "home_location": "/company",
+    "destination_status": 403
+  },
+  "S04_orphan_file": {
+    "stored_file_rows": 0,
+    "orphan_files": 1
+  },
+  "B03_duplicate_delivery": {
+    "queue_rows": 1,
+    "actual_deliveries": 2,
+    "workers": [
+      {
+        "sent": 1,
+        "failed": 0,
+        "deferred": 0
+      },
+      {
+        "sent": 1,
+        "failed": 0,
+        "deferred": 0
+      }
+    ]
+  },
+  "S05_unverified_company_notification": {
+    "company_status": "rejected",
+    "company_messages": 1,
+    "recipient": "unverified@example.org"
+  },
+  "B04_incomplete_backup": {
+    "verify_accepted": true,
+    "database_present": false
+  },
+  "B05_upcoming_limit": {
+    "future_courses_in_database": 1,
+    "returned_count": 0,
+    "limit": 1
+  },
+  "B06_import_transaction": {
+    "error": "PendingRollbackError",
+    "original_error": "IntegrityError",
+    "scope": "fault injection"
+  },
+  "B08_last_attempt_resume": {
+    "open_attempt_number": 3,
+    "dashboard_says_exhausted": true,
+    "resume_action_present": false
+  },
+  "B09_restore_storage_failure": {
+    "configured_storage_exists": false,
+    "previous_storage_preserved": 1,
+    "scope": "fault injection"
+  },
+  "S07_company_html_email": {
+    "unescaped_html_in_email": true
+  },
+  "B10_creation_audit_id": {
+    "entity_id_exists": true,
+    "audit_target_id": "None"
+  },
+  "D03_werkzeug_safe_join_primitive": {
+    "result": "C:/static/NUL:"
+  }
+}

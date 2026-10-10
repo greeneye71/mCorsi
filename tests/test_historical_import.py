@@ -149,3 +149,35 @@ def test_confirm_batch_rejects_an_invalid_attendance_status(app):
 
         assert batch.course is None
         assert Enrollment.query.count() == 0
+
+
+def test_integrity_conflict_marks_only_that_row_as_failed(app, monkeypatch):
+    from mcorsi.services import imports
+
+    with app.app_context():
+        admin = _admin()
+        batch = _prepared_batch(admin)
+        existing = User(email="antonella@example.it", first_name="Antonella", profile_completed=True)
+        existing.roles.append(Role.query.filter_by(name="participant").one())
+        db.session.add(existing)
+        db.session.commit()
+
+        original = imports._find_participant
+
+        def racing_lookup(row):
+            # Simula un inserimento concorrente: la ricerca non vede l'utente già presente.
+            if row.email == "antonella@example.it":
+                return None
+            return original(row)
+
+        monkeypatch.setattr(imports, "_find_participant", racing_lookup)
+        confirm_batch(batch, actor=admin, attendance_status="pending")
+        db.session.commit()
+
+        statuses = {row.email: row.status for row in batch.rows}
+        assert statuses["antonella@example.it"] == "error"
+        assert statuses["orietta@example.it"] == "imported"
+        assert batch.status == "completed_with_errors"
+        assert batch.summary["imported"] == 1
+        assert Enrollment.query.filter_by(course_id=batch.course.id).count() == 1
+        assert User.query.filter_by(email="antonella@example.it").count() == 1

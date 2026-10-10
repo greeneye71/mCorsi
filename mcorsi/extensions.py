@@ -39,6 +39,17 @@ def configure_sqlite(dbapi_connection, _connection_record) -> None:
 
 @login_manager.user_loader
 def load_user(user_id: str):
+    """Carica l'utente solo se il token di sessione non è stato revocato."""
+    import hmac
+
     from .models import User
 
-    return db.session.get(User, user_id)
+    raw_id, separator, token = (user_id or "").partition(":")
+    if not separator or not token:
+        return None
+    user = db.session.get(User, raw_id)
+    if user is None or not user.is_active or not user.session_token:
+        return None
+    if not hmac.compare_digest(user.session_token, token):
+        return None
+    return user

@@ -23,6 +23,7 @@ from .secrets import is_fernet_key
 BACKUP_FORMAT_VERSION = 1
 ENCRYPTED_BACKUP_MAGIC = b"MCBKUP02"
 ENCRYPTION_CHUNK_SIZE = 4 * 1024 * 1024
+SQLITE_HEADER = b"SQLite format 3\x00"
 _LENGTH = struct.Struct(">I")
 
 
@@ -278,24 +279,83 @@ def create_backup(destination: str | Path | None = None) -> Path:
     return archive_path
 
 
+def _is_valid_storage_path(value: str) -> bool:
+    if "\\" in value or value.startswith("/"):
+        return False
+    parts = value.split("/")
+    return (
+        len(parts) >= 2
+        and parts[0] == "storage"
+        and all(part not in {"", ".", ".."} for part in parts)
+        and ":" not in parts[1]
+    )
+
+
+def _validated_manifest_files(manifest: object) -> list[dict]:
+    if not isinstance(manifest, dict):
+        raise ValueError("Il manifest del backup non è valido.")
+    if manifest.get("format_version") != BACKUP_FORMAT_VERSION:
+        raise ValueError("Versione del formato di backup non supportata.")
+    files = manifest.get("files")
+    if not isinstance(files, list) or not files:
+        raise ValueError("Il manifest del backup non elenca alcun file.")
+    seen: set[str] = set()
+    for item in files:
+        if not isinstance(item, dict):
+            raise ValueError("Il manifest del backup non è valido.")
+        item_path = item.get("path")
+        digest = item.get("sha256")
+        size = item.get("size")
+        if (
+            not isinstance(item_path, str)
+            or not isinstance(digest, str)
+            or len(digest) != 64
+            or any(char not in "0123456789abcdef" for char in digest)
+            or not isinstance(size, int)
+            or isinstance(size, bool)
+            or size < 0
+        ):
+            raise ValueError("Il manifest del backup contiene una voce non valida.")
+        if item_path in seen:
+            raise ValueError(f"Voce duplicata nel manifest: {item_path}")
+        seen.add(item_path)
+        if item_path != "database.sqlite3" and not _is_valid_storage_path(item_path):
+            raise ValueError(f"Percorso non valido nel backup: {item_path}")
+    if "database.sqlite3" not in seen:
+        raise ValueError("Il backup non contiene il database.")
+    return files
+
+
 def _verify_zip(path: Path) -> dict:
     with zipfile.ZipFile(path, "r") as archive:
+        names = archive.namelist()
+        if len(names) != len(set(names)):
+            raise ValueError("L'archivio contiene voci duplicate.")
         if archive.testzip() is not None:
             raise ValueError("L'archivio ZIP contiene dati danneggiati.")
         try:
             manifest = json.loads(archive.read("manifest.json"))
         except KeyError as exc:
             raise ValueError("Il backup non contiene il manifest.") from exc
-        if manifest.get("format_version") != BACKUP_FORMAT_VERSION:
-            raise ValueError("Versione del formato di backup non supportata.")
-        entries = set(archive.namelist())
-        for item in manifest.get("files", []):
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("Il manifest del backup non è valido.") from exc
+        files = _validated_manifest_files(manifest)
+        expected = {"manifest.json"} | {item["path"] for item in files}
+        if set(names) != expected:
+            raise ValueError("Il contenuto dell'archivio non corrisponde al manifest.")
+        for item in files:
             item_path = item["path"]
-            if item_path not in entries:
-                raise ValueError(f"File mancante nel backup: {item_path}")
-            digest = hashlib.sha256(archive.read(item_path)).hexdigest()
-            if digest != item["sha256"]:
+            if archive.getinfo(item_path).file_size != item["size"]:
+                raise ValueError(f"Dimensione non valida: {item_path}")
+            digest = hashlib.sha256()
+            with archive.open(item_path) as source:
+                for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            if digest.hexdigest() != item["sha256"]:
                 raise ValueError(f"Checksum non valido: {item_path}")
+        with archive.open("database.sqlite3") as source:
+            if source.read(len(SQLITE_HEADER)) != SQLITE_HEADER:
+                raise ValueError("Il database del backup non è un file SQLite.")
     return manifest
 
 
@@ -361,13 +421,13 @@ def restore_backup(
         operation_id = uuid.uuid4().hex
         database_new = source_db.parent / f".{source_db.name}.restore-{operation_id}"
         storage_new = storage_path.parent / f".{storage_path.name}.restore-{operation_id}"
-        storage_old = storage_path.parent / f".{storage_path.name}.before-restore-{operation_id}"
         source_db.parent.mkdir(parents=True, exist_ok=True)
         storage_path.parent.mkdir(parents=True, exist_ok=True)
         storage_new.mkdir()
         try:
             with zipfile.ZipFile(readable_path, "r") as archive:
-                database_new.write_bytes(archive.read("database.sqlite3"))
+                with archive.open("database.sqlite3") as source, database_new.open("xb") as target:
+                    shutil.copyfileobj(source, target)
                 for item in manifest.get("files", []):
                     relative = Path(item["path"])
                     if relative.as_posix() == "database.sqlite3":
@@ -384,7 +444,8 @@ def restore_backup(
                     if storage_new.resolve() not in destination.parents:
                         raise ValueError(f"Percorso non valido nel backup: {item['path']}")
                     destination.parent.mkdir(parents=True, exist_ok=True)
-                    destination.write_bytes(archive.read(item["path"]))
+                    with archive.open(item["path"]) as source, destination.open("xb") as target:
+                        shutil.copyfileobj(source, target)
             with closing(sqlite3.connect(database_new)) as connection:
                 result = connection.execute("PRAGMA integrity_check").fetchone()
                 if not result or result[0] != "ok":
@@ -396,25 +457,70 @@ def restore_backup(
 
             db.session.remove()
             db.engine.dispose()
-            if storage_old.exists():
-                raise RuntimeError("Esiste già una directory temporanea di ripristino.")
-            if storage_path.exists():
-                storage_path.replace(storage_old)
-            storage_new.replace(storage_path)
-            try:
-                database_new.replace(source_db)
-                source_db.with_name(source_db.name + "-wal").unlink(missing_ok=True)
-                source_db.with_name(source_db.name + "-shm").unlink(missing_ok=True)
-            except Exception:
-                if storage_path.exists():
-                    shutil.rmtree(storage_path, ignore_errors=True)
-                if storage_old.exists():
-                    storage_old.replace(storage_path)
-                raise
-            if storage_old.exists():
-                shutil.rmtree(storage_old, ignore_errors=True)
+            _swap_into_place(
+                source_db=source_db,
+                database_new=database_new,
+                storage_path=storage_path,
+                storage_new=storage_new,
+                operation_id=operation_id,
+            )
         finally:
             database_new.unlink(missing_ok=True)
             if storage_new.exists():
                 shutil.rmtree(storage_new, ignore_errors=True)
     return manifest
+
+
+def _swap_into_place(
+    *,
+    source_db: Path,
+    database_new: Path,
+    storage_path: Path,
+    storage_new: Path,
+    operation_id: str,
+) -> None:
+    """Sostituisce storage e database; a ogni errore ripristina la coppia originale."""
+    storage_old = storage_path.parent / f".{storage_path.name}.before-restore-{operation_id}"
+    database_old = source_db.parent / f".{source_db.name}.before-restore-{operation_id}"
+    sidecars = [
+        (source_db.with_name(source_db.name + suffix), database_old.with_name(database_old.name + suffix))
+        for suffix in ("-wal", "-shm")
+    ]
+    if storage_old.exists() or database_old.exists():
+        raise RuntimeError("Esiste già una copia temporanea di ripristino.")
+
+    # Ogni passo completato registra l'operazione inversa da eseguire in caso di errore.
+    undo: list[tuple[Path, Path]] = []
+    try:
+        if storage_path.exists():
+            storage_path.replace(storage_old)
+            undo.append((storage_old, storage_path))
+        storage_new.replace(storage_path)
+        undo.append((storage_path, storage_new))
+        for current, saved in sidecars:
+            if current.exists():
+                current.replace(saved)
+                undo.append((saved, current))
+        if source_db.exists():
+            source_db.replace(database_old)
+            undo.append((database_old, source_db))
+        database_new.replace(source_db)
+    except BaseException:
+        failures = []
+        for moved, original in reversed(undo):
+            try:
+                moved.replace(original)
+            except OSError as exc:
+                failures.append(f"{moved} -> {original}: {exc}")
+        if failures:
+            current_app.logger.critical(
+                "Ripristino interrotto e rollback incompleto; intervento manuale richiesto: %s",
+                "; ".join(failures),
+            )
+        raise
+
+    for _current, saved in sidecars:
+        saved.unlink(missing_ok=True)
+    database_old.unlink(missing_ok=True)
+    if storage_old.exists():
+        shutil.rmtree(storage_old, ignore_errors=True)

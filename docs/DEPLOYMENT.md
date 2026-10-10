@@ -20,6 +20,10 @@ adatta soltanto a una rete interna fidata. I launcher `scripts/run-production.*`
 mantengono il valore sicuro predefinito e sono destinati a un endpoint HTTPS,
 per esempio tramite Cloudflare Tunnel. Per forzare HTTPS anche con il launcher
 interattivo, impostare `MCORSI_COOKIE_SECURE=true` nell'ambiente del comando.
+Il valore vale sia per il cookie di sessione sia per il cookie "ricordami", la
+cui durata si regola con `MCORSI_REMEMBER_COOKIE_DAYS` (14 giorni). Cambio
+password, disattivazione dell'utente o revoca dei ruoli invalidano le sessioni
+e i cookie "ricordami" già emessi.
 
 ## Preparazione comune
 
@@ -28,7 +32,12 @@ interattivo, impostare `MCORSI_COOKIE_SECURE=true` nell'ambiente del comando.
    `pip install --require-hashes -r requirements.lock`.
 3. Copiare `.env.example` in `.env`, generare i segreti con
    `python -m mcorsi.generate_secrets` e sostituire i cinque valori di esempio.
-4. Impostare percorsi assoluti per database, storage e backup.
+4. Impostare percorsi assoluti per database, storage e backup. Con
+   `MCORSI_INSTANCE_PATH` (assoluto) la directory scrivibile `instance`, usata
+   anche per lo staging dei backup e per il marker della migrazione dei
+   segreti, esce dall'albero del codice: necessario con `ProtectSystem=strict`.
+   Le unit in `deploy/linux` impostano già `/var/lib/mcorsi/instance` e
+   `scripts/run-production.sh` si ferma se la directory non è scrivibile.
 5. Eseguire `python -m flask --app wsgi init-db` e creare l'amministratore.
 6. Verificare `http://127.0.0.1:5100/health/ready` dopo l'avvio.
 
@@ -42,6 +51,7 @@ MCORSI_BACKUP_ENCRYPTION_KEY=...
 MCORSI_OTP_PEPPER=...
 MCORSI_MCP_TOKEN_PEPPER=...
 MCORSI_DATABASE_URL=sqlite:////var/lib/mcorsi/mcorsi.sqlite3
+MCORSI_INSTANCE_PATH=/var/lib/mcorsi/instance
 MCORSI_STORAGE_PATH=/var/lib/mcorsi/storage
 MCORSI_BACKUP_PATH=/var/backups/mcorsi
 MCORSI_LIBREOFFICE_PATH=/usr/bin/libreoffice
@@ -259,6 +269,12 @@ gli archivi in chiaro dalla destinazione con una procedura controllata.
 Per ruotare la chiave dei backup, impostare la nuova chiave primaria e spostare
 quella precedente in `MCORSI_BACKUP_DECRYPTION_KEYS`. Mantenerla finché tutti i
 backup che la usano sono scaduti o sono stati convertiti, quindi rimuoverla.
+
+La verifica rifiuta archivi con voci duplicate o non elencate nel manifest,
+percorsi fuori da `storage/`, dimensioni o checksum errati e database che non
+sono file SQLite. Il ripristino sostituisce database (con i file `-wal` e
+`-shm`) e storage solo dopo l'estrazione completa e, se uno spostamento
+fallisce, riporta automaticamente al loro posto i file originali.
 
 Prima della sostituzione il comando crea automaticamente un ulteriore backup
 di sicurezza dello stato corrente. Dopo ogni creazione vengono conservati gli

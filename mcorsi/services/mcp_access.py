@@ -61,6 +61,19 @@ def create_access_token(
     return raw_token, access
 
 
+def token_is_usable(access: McpAccessToken, *, now: datetime | None = None) -> bool:
+    """Il token vale solo se attivo, non scaduto e con un proprietario amministratore attivo."""
+    if not access.is_active:
+        return False
+    expiry = access.expires_at
+    if expiry is not None:
+        expiry = expiry if expiry.tzinfo else expiry.replace(tzinfo=timezone.utc)
+        if expiry <= (now or datetime.now(timezone.utc)):
+            return False
+    owner = access.created_by
+    return owner is not None and owner.is_active and owner.has_role("admin")
+
+
 def verify_access_token(raw_token: str, *, update_last_used: bool = True) -> McpAccessToken | None:
     parts = raw_token.split("_", 2)
     if len(parts) != 3 or parts[0] != "mcorsi":
@@ -69,11 +82,8 @@ def verify_access_token(raw_token: str, *, update_last_used: bool = True) -> Mcp
     if access is None or not hmac.compare_digest(access.token_hash, _digest(raw_token)):
         return None
     now = datetime.now(timezone.utc)
-    expiry = access.expires_at
-    if expiry is not None:
-        expiry = expiry if expiry.tzinfo else expiry.replace(tzinfo=timezone.utc)
-        if expiry <= now:
-            return None
+    if not token_is_usable(access, now=now):
+        return None
     last_used = access.last_used_at
     if last_used is not None and last_used.tzinfo is None:
         last_used = last_used.replace(tzinfo=timezone.utc)

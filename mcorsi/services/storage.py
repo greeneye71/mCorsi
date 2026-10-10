@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -10,12 +11,17 @@ from defusedxml import ElementTree
 from defusedxml.common import DefusedXmlException
 from flask import current_app
 from PIL import Image
-from pypdf import PdfReader
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ..extensions import db
 from ..models import StoredFile, User
+from .pdf_probe import count_pdf_pages
+
+
+logger = logging.getLogger(__name__)
 
 
 class StorageError(ValueError):
@@ -88,8 +94,7 @@ def _validate_pdf(path: Path) -> None:
         with path.open("rb") as source:
             if not source.read(5).startswith(b"%PDF-"):
                 raise ValueError
-        reader = PdfReader(str(path))
-        if not reader.pages:
+        if count_pdf_pages(path) < 1:
             raise ValueError
     except Exception as exc:
         raise StorageError("Il file non contiene un PDF valido.") from exc
@@ -189,6 +194,30 @@ def detect_mime_type(path: Path, suffix: str) -> str:
     return mime_type
 
 
+_PENDING_FILES_KEY = "mcorsi_pending_files"
+
+
+def _track_pending_file(path: Path) -> None:
+    """Il file resta su disco solo se la transazione che lo registra viene confermata."""
+    db.session.info.setdefault(_PENDING_FILES_KEY, []).append(str(path))
+
+
+@event.listens_for(Session, "after_commit")
+def _keep_committed_files(session: Session) -> None:
+    session.info.pop(_PENDING_FILES_KEY, None)
+
+
+@event.listens_for(Session, "after_transaction_end")
+def _discard_uncommitted_files(session: Session, transaction) -> None:
+    if transaction.parent is not None:
+        return
+    for pending in session.info.pop(_PENDING_FILES_KEY, []):
+        try:
+            Path(pending).unlink(missing_ok=True)
+        except OSError:
+            logger.warning("File orfano non rimosso: %s", pending)
+
+
 def storage_root() -> Path:
     return Path(current_app.config["PRIVATE_STORAGE_PATH"]).resolve()
 
@@ -248,6 +277,7 @@ def save_upload(
         destination.unlink(missing_ok=True)
         raise
 
+    _track_pending_file(destination)
     record = StoredFile(
         storage_key=storage_key,
         original_name=original_name,

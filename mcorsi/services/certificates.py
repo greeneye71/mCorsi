@@ -26,6 +26,7 @@ from ..models import (
     SignatureAsset,
     User,
 )
+from .pdf_probe import count_pdf_pages
 from .questionnaires import course_assessment_complete
 from .storage import path_for, save_bytes, storage_root
 
@@ -322,8 +323,7 @@ def participant_slug(participant: User) -> str:
 
 def validate_pdf(path: Path) -> None:
     try:
-        reader = PdfReader(str(path))
-        if not reader.pages:
+        if count_pdf_pages(path) < 1:
             raise ValueError
     except Exception as exc:
         raise CertificateError("Il file caricato non è un PDF valido.") from exc

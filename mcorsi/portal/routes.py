@@ -20,7 +20,12 @@ from ..services.participants import (
     vat_number_variants,
 )
 from ..services.permissions import participant_required
-from ..services.questionnaires import attempts_used, has_passed, submitted_attempts
+from ..services.questionnaires import (
+    attempts_used,
+    has_passed,
+    resumable_attempt,
+    submitted_attempts,
+)
 from ..services.secrets import SecretDecryptionError
 from .forms import CourseCodeForm, OtpRequestForm, OtpVerifyForm, ParticipantProfileForm
 
@@ -249,6 +254,7 @@ def dashboard():
                 "used": used,
                 "passed": has_passed(questionnaire, current_user),
                 "remaining": max(0, questionnaire.max_attempts - used),
+                "resumable": resumable_attempt(questionnaire, current_user) is not None,
             }
     certificates = Certificate.query.filter_by(participant_user_id=current_user.id).order_by(Certificate.course_date.desc()).all()
     today = date.today()

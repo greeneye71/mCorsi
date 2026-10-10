@@ -75,6 +75,7 @@ def create_course(*, actor: User, data: dict) -> Course:
     )
     set_single_session(course, data["session_date"], data["start_time"], data["end_time"])
     db.session.add(course)
+    db.session.flush()
     record_event(
         "course.created",
         actor=actor,

@@ -11,7 +11,7 @@ defusedxml>=0.7,<1
 docxtpl>=0.20,<1
 python-docx>=1.2,<2
 Pillow>=11,<13
-pypdf>=6,<7
+pypdf>=6.19,<7
 openpyxl>=3.1,<4
 mcp>=1.27,<2
 # Dipendenza MCP solo Windows; il marker mantiene il lock installabile anche su Linux.
