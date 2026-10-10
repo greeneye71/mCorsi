@@ -104,7 +104,7 @@ def test_legacy_backup_requires_opt_in_and_can_be_converted(app):
     backup_dir = Path(app.config["BACKUP_PATH"])
     backup_dir.mkdir(parents=True, exist_ok=True)
     legacy = backup_dir / "legacy.mcbackup"
-    database_content = b"database legacy di prova"
+    database_content = b"SQLite format 3\x00" + bytes(84)
     manifest = {
         "format_version": 1,
         "created_at": "2026-08-29T12:00:00+00:00",
@@ -129,3 +129,109 @@ def test_legacy_backup_requires_opt_in_and_can_be_converted(app):
         assert converted.read_bytes().startswith(ENCRYPTED_BACKUP_MAGIC)
         assert verify_backup(converted) == manifest
         assert legacy.exists()
+
+
+def _legacy_archive(path: Path, entries: list[tuple[str, bytes]], manifest_files=None) -> None:
+    files = manifest_files
+    if files is None:
+        files = [
+            {"path": name, "sha256": hashlib.sha256(content).hexdigest(), "size": len(content)}
+            for name, content in entries
+        ]
+    manifest = {"format_version": 1, "application": "mCorsi", "files": files}
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("manifest.json", json.dumps(manifest))
+        for name, content in entries:
+            archive.writestr(name, content)
+
+
+SQLITE_BYTES = b"SQLite format 3\x00" + bytes(84)
+
+
+@pytest.mark.parametrize(
+    ("entries", "manifest_files", "message"),
+    [
+        ([("storage/a.txt", b"a")], None, "non contiene il database"),
+        ([], [], "non elenca alcun file"),
+        ([("database.sqlite3", b"non sqlite")], None, "non è un file SQLite"),
+        (
+            [("database.sqlite3", SQLITE_BYTES)],
+            [{"path": "database.sqlite3", "sha256": hashlib.sha256(SQLITE_BYTES).hexdigest(), "size": 1}],
+            "Dimensione non valida",
+        ),
+        (
+            [("database.sqlite3", SQLITE_BYTES), ("extra.txt", b"x")],
+            [
+                {
+                    "path": "database.sqlite3",
+                    "sha256": hashlib.sha256(SQLITE_BYTES).hexdigest(),
+                    "size": len(SQLITE_BYTES),
+                }
+            ],
+            "non corrisponde al manifest",
+        ),
+        ([("database.sqlite3", SQLITE_BYTES), ("storage/../evil", b"x")], None, "Percorso non valido"),
+        (
+            [("database.sqlite3", SQLITE_BYTES)],
+            [{"path": "database.sqlite3", "sha256": "zz", "size": 1}],
+            "voce non valida",
+        ),
+    ],
+)
+def test_verify_rejects_incomplete_or_inconsistent_archives(app, entries, manifest_files, message):
+    archive = Path(app.config["BACKUP_PATH"]) / "invalido.mcbackup"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    _legacy_archive(archive, entries, manifest_files)
+    with app.app_context():
+        with pytest.raises(ValueError, match=message):
+            verify_backup(archive, allow_legacy_unencrypted=True)
+
+
+def test_verify_rejects_duplicate_zip_entries(app):
+    archive = Path(app.config["BACKUP_PATH"]) / "duplicato.mcbackup"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    _legacy_archive(archive, [("database.sqlite3", SQLITE_BYTES)])
+    with pytest.warns(UserWarning):
+        with zipfile.ZipFile(archive, "a") as handle:
+            handle.writestr("database.sqlite3", b"SQLite format 3\x00altro")
+    with app.app_context():
+        with pytest.raises(ValueError, match="voci duplicate"):
+            verify_backup(archive, allow_legacy_unencrypted=True)
+
+
+@pytest.mark.parametrize("failing_call", [1, 2, 3, 4])
+def test_restore_failure_keeps_original_database_and_storage(app, monkeypatch, failing_call):
+    storage = Path(app.config["PRIVATE_STORAGE_PATH"])
+    storage.mkdir(parents=True, exist_ok=True)
+    marker = storage / "marker.txt"
+    marker.write_text("da backup", encoding="utf-8")
+    with app.app_context():
+        db.session.add(User(email="backup@example.it", profile_completed=True))
+        db.session.commit()
+        archive = create_backup()
+        marker.write_text("corrente", encoding="utf-8")
+        db.session.add(User(email="corrente@example.it", profile_completed=True))
+        db.session.commit()
+
+        original_replace = Path.replace
+        calls = {"count": 0}
+
+        def flaky_replace(self, target):
+            if ".restore-" in self.name or ".before-restore-" in Path(target).name or (
+                ".before-restore-" in self.name
+            ):
+                calls["count"] += 1
+                if calls["count"] == failing_call:
+                    raise OSError("rinomina simulata non riuscita")
+            return original_replace(self, target)
+
+        monkeypatch.setattr(Path, "replace", flaky_replace)
+        with pytest.raises(OSError, match="rinomina simulata"):
+            restore_backup(archive, safety_backup=False)
+        monkeypatch.undo()
+
+        assert marker.read_text(encoding="utf-8") == "corrente"
+        assert User.query.filter_by(email="corrente@example.it").one()
+        leftovers = [p.name for p in storage.parent.iterdir() if "restore-" in p.name]
+        leftovers += [p.name for p in Path(backup_service._sqlite_path()).parent.iterdir() if "restore-" in p.name]
+        assert leftovers == []

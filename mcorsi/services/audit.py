@@ -18,7 +18,7 @@ def record_event(
         actor_user_id=actor.id if actor else None,
         event_type=event_type,
         target_type=target_type,
-        target_id=str(target_id),
+        target_id="" if target_id is None else str(target_id),
         detail=detail or {},
         ip_address=(request.remote_addr or "") if has_request_context() else "",
     )

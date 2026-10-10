@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import html
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from flask import current_app
+from sqlalchemy import update
 
 from ..extensions import db
 from ..models import Company, CompanyContact, OneTimeCode, Role, User, normalize_email
@@ -34,6 +36,51 @@ def _aware(value: datetime) -> datetime:
 def _hash_code(challenge_id: str, code: str) -> str:
     pepper = current_app.config["OTP_PEPPER"].encode("utf-8")
     return hmac.new(pepper, f"{challenge_id}:{code}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _claim_attempt(challenge_id: str) -> bool:
+    """Conta un tentativo in modo atomico: fallisce se il codice è già esaurito."""
+    result = db.session.execute(
+        update(OneTimeCode)
+        .where(
+            OneTimeCode.id == challenge_id,
+            OneTimeCode.consumed_at.is_(None),
+            OneTimeCode.attempts < OneTimeCode.max_attempts,
+        )
+        .values(attempts=OneTimeCode.attempts + 1)
+        .execution_options(synchronize_session=False)
+    )
+    return result.rowcount == 1
+
+
+def _consume(challenge_id: str, now: datetime) -> bool:
+    """Marca il codice come usato una sola volta anche con richieste concorrenti."""
+    result = db.session.execute(
+        update(OneTimeCode)
+        .where(OneTimeCode.id == challenge_id, OneTimeCode.consumed_at.is_(None))
+        .values(consumed_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    return result.rowcount == 1
+
+
+def _check_code(challenge: OneTimeCode, code: str, now: datetime) -> bool:
+    """Registra il tentativo e confronta il codice; consuma il codice se valido."""
+    if not _claim_attempt(challenge.id):
+        db.session.commit()
+        raise OtpError("Numero massimo di tentativi raggiunto.")
+    db.session.refresh(challenge)
+    valid = hmac.compare_digest(challenge.code_hash, _hash_code(challenge.id, code))
+    if valid:
+        if not _consume(challenge.id, now):
+            db.session.rollback()
+            raise OtpError("Codice non valido o scaduto.")
+        db.session.refresh(challenge)
+        return True
+    if challenge.attempts >= challenge.max_attempts:
+        _consume(challenge.id, now)
+        db.session.refresh(challenge)
+    return False
 
 
 def _participant_role() -> Role:
@@ -155,11 +202,7 @@ def verify_participant_code(challenge_id: str, code: str) -> User:
     if challenge.attempts >= challenge.max_attempts:
         raise OtpError("Numero massimo di tentativi raggiunto.")
 
-    challenge.attempts += 1
-    valid = hmac.compare_digest(challenge.code_hash, _hash_code(challenge.id, code))
-    if not valid:
-        if challenge.attempts >= challenge.max_attempts:
-            challenge.consumed_at = now
+    if not _check_code(challenge, code, now):
         record_event(
             "auth.otp_failed",
             target_type="user",
@@ -169,15 +212,16 @@ def verify_participant_code(challenge_id: str, code: str) -> User:
         db.session.commit()
         raise OtpError("Codice non valido o scaduto.")
 
-    challenge.consumed_at = now
     user = challenge.user
     if not user.is_active or user.has_role("admin", "operator"):
-        challenge.consumed_at = now
         db.session.commit()
         raise OtpError("Codice non valido o scaduto.")
     role = _participant_role()
     if not user.has_role("participant"):
         user.roles.append(role)
+        if user.participant_profile is None:
+            # Un account nato come contatto aziendale non ha un profilo partecipante.
+            user.profile_completed = False
     user.last_login_at = now
     record_event("auth.otp_succeeded", actor=user, target_type="user", target_id=user.id)
     db.session.commit()
@@ -204,8 +248,11 @@ def request_company_code(
     contact = None
     if company and user:
         contact = CompanyContact.query.filter_by(
-            company_id=company.id, user_id=user.id, is_active=True
+            company_id=company.id, user_id=user.id
         ).first()
+    if contact is not None and not contact.is_active:
+        # Un referente disattivato da un operatore non può riattivarsi da solo.
+        return None
     if company is None or (
         normalize_email(company.email) != normalized and contact is None
     ):
@@ -279,7 +326,7 @@ def request_company_code(
                 f"Scade tra {current_app.config['OTP_EXPIRY_MINUTES']} minuti e può essere usato una sola volta."
             ),
             html_body=(
-                f"<p>Codice temporaneo per <strong>{company.business_name}</strong>:</p>"
+                f"<p>Codice temporaneo per <strong>{html.escape(company.business_name)}</strong>:</p>"
                 f"<p style=\"font-size:28px;font-weight:bold;letter-spacing:6px\">{code}</p>"
                 f"<p>Scade tra {current_app.config['OTP_EXPIRY_MINUTES']} minuti.</p>"
             ),
@@ -307,11 +354,7 @@ def verify_company_code(challenge_id: str, code: str) -> tuple[User, Company]:
         raise OtpError("Codice non valido o scaduto.")
     if challenge.attempts >= challenge.max_attempts:
         raise OtpError("Numero massimo di tentativi raggiunto.")
-    challenge.attempts += 1
-    valid = hmac.compare_digest(challenge.code_hash, _hash_code(challenge.id, code))
-    if not valid:
-        if challenge.attempts >= challenge.max_attempts:
-            challenge.consumed_at = now
+    if not _check_code(challenge, code, now):
         db.session.commit()
         raise OtpError("Codice non valido o scaduto.")
     company_id = (challenge.context or {}).get("company_id")
@@ -326,10 +369,8 @@ def verify_company_code(challenge_id: str, code: str) -> tuple[User, Company]:
         or not challenge.user.is_active
         or challenge.user.has_role("admin", "operator")
     ):
-        challenge.consumed_at = now
         db.session.commit()
         raise OtpError("Codice non valido o scaduto.")
-    challenge.consumed_at = now
     challenge.user.last_login_at = now
     record_event(
         "auth.company_otp_succeeded",

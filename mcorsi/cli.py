@@ -196,6 +196,7 @@ def disable_user(email: str) -> None:
     if user is None:
         raise click.ClickException("Utente non trovato.")
     user.is_active = False
+    user.revoke_sessions()
     record_event("admin.user_disabled_cli", target_type="user", target_id=user.id)
     db.session.commit()
     click.echo(f"Utente disabilitato: {user.email}")
@@ -431,7 +432,7 @@ def notifications_send(limit: int) -> None:
     """Invia i messaggi pronti nella coda."""
     result = deliver_pending(limit=limit)
     click.echo(
-        f"Inviati: {result['sent']} · rinviati: {result['deferred']} · falliti: {result['failed']}"
+        f"Inviati: {result['sent']} · rinviati: {result['deferred']} · falliti: {result['failed']} · annullati: {result['canceled']}"
     )
 
 
@@ -443,5 +444,5 @@ def notifications_run(limit: int) -> None:
     queued = enqueue_reminders()
     result = deliver_pending(limit=limit)
     click.echo(
-        f"Accodati: {sum(queued.values())} · inviati: {result['sent']} · rinviati: {result['deferred']} · falliti: {result['failed']}"
+        f"Accodati: {sum(queued.values())} · inviati: {result['sent']} · rinviati: {result['deferred']} · falliti: {result['failed']} · annullati: {result['canceled']}"
     )

@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, url_for
-from flask_login import current_user
+from flask_login import current_user, login_user
 
 from ..extensions import db
 from ..models import EmailOutbox, NotificationConfiguration, Role, SmtpConfiguration, User, normalize_email
@@ -123,6 +123,8 @@ def staff_password(user_id: str):
             target_id=user.id,
         )
         db.session.commit()
+        if user.id == current_user.id:
+            login_user(user)
         flash(f"Password aggiornata per {user.email}.", "success")
     else:
         flash(
@@ -152,6 +154,7 @@ def staff_state(user_id: str):
         flash("Non puoi disabilitare l'ultimo amministratore attivo.", "error")
         return redirect(url_for("settings.staff"))
     user.is_active = not user.is_active
+    user.revoke_sessions()
     record_event(
         "admin.user_enabled_web" if user.is_active else "admin.user_disabled_web",
         actor=current_user,

@@ -40,3 +40,45 @@ def test_production_cookie_security_defaults_to_https():
 
 def test_production_cookie_security_can_be_disabled_explicitly_for_lan_http():
     assert _production_cookie_flags("false") == "False False"
+
+
+def test_instance_path_defaults_to_project_and_accepts_absolute_override(tmp_path):
+    from mcorsi.config import BASE_DIR, instance_dir
+
+    assert instance_dir({}) == BASE_DIR / "instance"
+    assert instance_dir({"MCORSI_INSTANCE_PATH": str(tmp_path)}) == tmp_path
+
+
+def test_instance_path_rejects_relative_values():
+    import pytest
+
+    from mcorsi.config import instance_dir
+
+    with pytest.raises(RuntimeError, match="assoluto"):
+        instance_dir({"MCORSI_INSTANCE_PATH": "instance"})
+
+
+def test_app_uses_configured_instance_path(tmp_path, monkeypatch):
+    from mcorsi import create_app
+
+    target = tmp_path / "istanza"
+    monkeypatch.setenv("MCORSI_INSTANCE_PATH", str(target))
+    app = create_app(
+        "testing",
+        {
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "PRIVATE_STORAGE_PATH": str(tmp_path / "storage"),
+            "BACKUP_PATH": str(tmp_path / "backups"),
+        },
+    )
+    assert Path(app.instance_path) == target
+    assert target.is_dir()
+
+
+def test_startup_marker_follows_instance_path(tmp_path, monkeypatch):
+    from mcorsi import startup_secrets
+
+    monkeypatch.setenv("MCORSI_INSTANCE_PATH", str(tmp_path))
+    assert startup_secrets._default_marker_path(tmp_path / "missing.env") == (
+        tmp_path / ".secret-migration.json"
+    )

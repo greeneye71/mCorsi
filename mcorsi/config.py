@@ -6,7 +6,22 @@ from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-INSTANCE_DIR = BASE_DIR / "instance"
+
+
+def instance_dir(environ=None) -> Path:
+    """Directory scrivibile per dati locali; MCORSI_INSTANCE_PATH la sposta fuori dal codice."""
+    configured = (environ if environ is not None else os.environ).get(
+        "MCORSI_INSTANCE_PATH", ""
+    ).strip()
+    if not configured:
+        return BASE_DIR / "instance"
+    path = Path(configured)
+    if not path.is_absolute():
+        raise RuntimeError("MCORSI_INSTANCE_PATH deve essere un percorso assoluto.")
+    return path
+
+
+INSTANCE_DIR = instance_dir()
 
 
 def _environment_flag(name: str, default: bool = False) -> bool:
@@ -49,6 +64,9 @@ class BaseConfig:
     SESSION_COOKIE_SAMESITE = "Lax"
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_DURATION = timedelta(
+        days=int(os.environ.get("MCORSI_REMEMBER_COOKIE_DAYS", "14"))
+    )
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     WTF_CSRF_TIME_LIMIT = 2 * 60 * 60
     TRUST_PROXY_HEADERS = _environment_flag("MCORSI_TRUST_PROXY_HEADERS")

@@ -27,7 +27,7 @@ def test_version_is_stored_displayed_and_reported(app, client, runner):
     assert ready["status"] in {"ok", "degraded"}
 
     with client.session_transaction() as browser_session:
-        browser_session["_user_id"] = admin_id
+        browser_session["_user_id"] = _auth_id(app, admin_id)
         browser_session["_fresh"] = True
     ready = client.get("/health/ready").get_json()
     assert ready["database_version"] == DATABASE_VERSION
@@ -49,3 +49,8 @@ def test_readiness_rejects_incompatible_database_version(app, client):
     response = client.get("/health/ready")
     assert response.status_code == 503
     assert response.get_json() == {"status": "degraded"}
+
+
+def _auth_id(app, user_id):
+    with app.app_context():
+        return db.session.get(User, user_id).get_id()

@@ -20,6 +20,7 @@ from mcorsi.models import (
     Questionnaire,
     QuestionnaireAttempt,
     Role,
+    StoredFile,
     User,
 )
 from mcorsi.services.certificates import (
@@ -92,7 +93,7 @@ def test_only_admin_can_upload_certificate_templates(app, client):
         db.session.commit()
         operator_id = operator.id
     with client.session_transaction() as browser_session:
-        browser_session["_user_id"] = operator_id
+        browser_session["_user_id"] = _auth_id(app, operator_id)
         browser_session["_fresh"] = True
 
     template_path = Path("mcorsi/assets/default_certificate.docx").resolve()
@@ -226,7 +227,7 @@ def test_participant_upload_is_pending_and_private(app, client):
         db.session.commit()
         participant_id, other_id = participant.id, other.id
     with client.session_transaction() as browser_session:
-        browser_session["_user_id"] = participant_id
+        browser_session["_user_id"] = _auth_id(app, participant_id)
         browser_session["_fresh"] = True
     response = client.post(
         "/documents/participant/upload",
@@ -245,6 +246,74 @@ def test_participant_upload_is_pending_and_private(app, client):
         certificate_id = certificate.id
     assert client.get(f"/documents/certificates/{certificate_id}/download").status_code == 200
     with client.session_transaction() as browser_session:
-        browser_session["_user_id"] = other_id
+        browser_session["_user_id"] = _auth_id(app, other_id)
         browser_session["_fresh"] = True
     assert client.get(f"/documents/certificates/{certificate_id}/download").status_code == 403
+
+
+def _auth_id(app, user_id):
+    with app.app_context():
+        return db.session.get(User, user_id).get_id()
+
+
+def _stored_files_on_disk(app) -> list[Path]:
+    root = Path(app.config["PRIVATE_STORAGE_PATH"])
+    return [path for path in root.rglob("*") if path.is_file()] if root.exists() else []
+
+
+def test_rejected_uploads_leave_no_orphan_files(app, client):
+    with app.app_context():
+        admin = _user("admin", "orphans@example.it")
+        db.session.commit()
+        admin_id = admin.id
+    with client.session_transaction() as browser_session:
+        browser_session["_user_id"] = _auth_id(app, admin_id)
+        browser_session["_fresh"] = True
+    before = set(_stored_files_on_disk(app))
+
+    tiny = BytesIO()
+    Image.new("RGB", (10, 10), "white").save(tiny, format="PNG")
+    response = client.post(
+        "/documents/signatures",
+        data={
+            "name": "Firma",
+            "signer_name": "Ada Lovelace",
+            "file": (BytesIO(tiny.getvalue()), "firma.png"),
+        },
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 302
+
+    empty_template = BytesIO()
+    Document().save(empty_template)
+    response = client.post(
+        "/documents/templates",
+        data={"name": "Vuoto", "file": (BytesIO(empty_template.getvalue()), "vuoto.docx")},
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 302
+
+    assert set(_stored_files_on_disk(app)) == before
+    with app.app_context():
+        assert StoredFile.query.count() == 0
+
+
+def test_committed_upload_keeps_its_file(app):
+    with app.app_context():
+        admin = _user("admin", "kept@example.it")
+        stored = save_upload(
+            FileStorage(stream=BytesIO(_pdf_bytes()), filename="a.pdf", content_type="application/pdf"),
+            actor=admin,
+            category="certificates",
+        )
+        db.session.commit()
+        assert path_for(stored).exists()
+        discarded = save_upload(
+            FileStorage(stream=BytesIO(_pdf_bytes()), filename="b.pdf", content_type="application/pdf"),
+            actor=admin,
+            category="certificates",
+        )
+        discarded_path = path_for(discarded)
+        db.session.rollback()
+        assert not discarded_path.exists()
+        assert path_for(stored).exists()

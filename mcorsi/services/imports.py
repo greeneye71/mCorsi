@@ -10,6 +10,7 @@ from email_validator import EmailNotValidError, validate_email
 from openpyxl import load_workbook
 from openpyxl.utils.cell import range_boundaries
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
 from ..extensions import db
@@ -253,6 +254,54 @@ def _find_participant(row: ImportRow) -> User | None:
     return None
 
 
+def _import_row(
+    row: ImportRow, *, course, participant_role: Role, attendance_status: str
+) -> str:
+    participant = _find_participant(row)
+    if participant is None:
+        participant = User(
+            email=normalize_email(row.email),
+            first_name=row.first_name,
+            last_name=row.last_name,
+            profile_completed=bool(row.first_name and row.last_name and row.birth_place and row.birth_date),
+        )
+        participant.roles.append(participant_role)
+        participant.participant_profile = ParticipantProfile(
+            birth_place=row.birth_place,
+            birth_date=row.birth_date,
+            certificate_title=row.certificate_title,
+        )
+        db.session.add(participant)
+        db.session.flush()
+    else:
+        participant.first_name = participant.first_name or row.first_name
+        participant.last_name = participant.last_name or row.last_name
+        if participant.participant_profile is None:
+            participant.participant_profile = ParticipantProfile()
+        profile = participant.participant_profile
+        profile.birth_place = profile.birth_place or row.birth_place
+        profile.birth_date = profile.birth_date or row.birth_date
+        profile.certificate_title = profile.certificate_title or row.certificate_title
+        participant.profile_completed = bool(
+            participant.first_name and participant.last_name and profile.birth_place and profile.birth_date
+        )
+    if Enrollment.query.filter_by(course_id=course.id, participant_user_id=participant.id).first():
+        row.status = "skipped"
+        row.warning = (row.warning + "; " if row.warning else "") + "già iscritto"
+        return "skipped"
+    enrollment = Enrollment(
+        course=course,
+        participant=participant,
+        attendance_status=attendance_status,
+    )
+    db.session.add(enrollment)
+    db.session.flush()
+    row.participant_user_id = participant.id
+    row.enrollment_id = enrollment.id
+    row.status = "imported"
+    return "imported"
+
+
 def confirm_batch(
     batch: ImportBatch, *, actor: User, attendance_status: str
 ) -> ImportBatch:
@@ -282,59 +331,30 @@ def confirm_batch(
         if row.status != "ready":
             errors += 1
             continue
+        # Un savepoint per riga: un conflitto annulla solo la riga e lascia la
+        # sessione utilizzabile. Gli errori imprevisti interrompono l'import.
         try:
-            participant = _find_participant(row)
-            if participant is None:
-                participant = User(
-                    email=normalize_email(row.email),
-                    first_name=row.first_name,
-                    last_name=row.last_name,
-                    profile_completed=bool(row.first_name and row.last_name and row.birth_place and row.birth_date),
+            with db.session.begin_nested():
+                outcome = _import_row(
+                    row,
+                    course=course,
+                    participant_role=participant_role,
+                    attendance_status=attendance_status,
                 )
-                participant.roles.append(participant_role)
-                participant.participant_profile = ParticipantProfile(
-                    birth_place=row.birth_place,
-                    birth_date=row.birth_date,
-                    certificate_title=row.certificate_title,
-                )
-                db.session.add(participant)
-                db.session.flush()
-            else:
-                participant.first_name = participant.first_name or row.first_name
-                participant.last_name = participant.last_name or row.last_name
-                if participant.participant_profile is None:
-                    participant.participant_profile = ParticipantProfile()
-                profile = participant.participant_profile
-                profile.birth_place = profile.birth_place or row.birth_place
-                profile.birth_date = profile.birth_date or row.birth_date
-                profile.certificate_title = profile.certificate_title or row.certificate_title
-                participant.profile_completed = bool(
-                    participant.first_name and participant.last_name and profile.birth_place and profile.birth_date
-                )
-            if Enrollment.query.filter_by(course_id=course.id, participant_user_id=participant.id).first():
-                row.status = "skipped"
-                row.warning = (row.warning + "; " if row.warning else "") + "già iscritto"
-                skipped += 1
-                continue
-            enrollment = Enrollment(
-                course=course,
-                participant=participant,
-                attendance_status=attendance_status,
-            )
-            db.session.add(enrollment)
-            db.session.flush()
-            row.participant_user_id = participant.id
-            row.enrollment_id = enrollment.id
-            row.status = "imported"
-            imported += 1
         except HistoricalImportError as exc:
             row.status = "error"
             row.warning = str(exc)
             errors += 1
-        except Exception as exc:
+            continue
+        except IntegrityError:
             row.status = "error"
-            row.warning = f"errore di importazione: {type(exc).__name__}"
+            row.warning = "errore di importazione: dati in conflitto con un record esistente"
             errors += 1
+            continue
+        if outcome == "skipped":
+            skipped += 1
+        else:
+            imported += 1
     batch.course = course
     batch.status = "completed" if not errors else "completed_with_errors"
     batch.completed_at = datetime.now(timezone.utc)

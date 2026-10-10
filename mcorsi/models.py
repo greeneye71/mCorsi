@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 import uuid
 import unicodedata
 from datetime import date, datetime, timezone
@@ -18,6 +19,10 @@ def utc_now() -> datetime:
 
 def new_uuid() -> str:
     return str(uuid.uuid4())
+
+
+def new_session_token() -> str:
+    return secrets.token_hex(16)
 
 
 def normalize_email(value: str) -> str:
@@ -53,6 +58,7 @@ class User(UserMixin, db.Model):
     mobile_verified_at = db.Column(db.DateTime(timezone=True), nullable=True)
     profile_completed = db.Column(db.Boolean, nullable=False, default=False)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    session_token = db.Column(db.String(64), nullable=False, default=new_session_token)
     last_login_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at = db.Column(
@@ -70,6 +76,16 @@ class User(UserMixin, db.Model):
         if not password_is_valid(password):
             raise ValueError(PASSWORD_POLICY_MESSAGE)
         self.password_hash = generate_password_hash(password)
+        self.revoke_sessions()
+
+    def revoke_sessions(self) -> None:
+        """Invalida sessioni e cookie "ricordami" emessi in precedenza."""
+        self.session_token = new_session_token()
+
+    def get_id(self) -> str:
+        if not self.session_token:
+            self.session_token = new_session_token()
+        return f"{self.id}:{self.session_token}"
 
     def check_password(self, password: str) -> bool:
         return bool(self.password_hash) and check_password_hash(self.password_hash, password)

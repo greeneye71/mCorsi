@@ -8,7 +8,7 @@ from flask import Flask, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .cli import register_commands
-from .config import CONFIGS
+from .config import CONFIGS, instance_dir
 from .extensions import csrf, db, login_manager, migrate
 from .services.secrets import is_fernet_key
 from .version import APP_VERSION, DATABASE_VERSION
@@ -17,7 +17,7 @@ from .version import APP_VERSION, DATABASE_VERSION
 def create_app(config_name: str = "production", test_config: dict | None = None) -> Flask:
     if config_name not in CONFIGS:
         raise RuntimeError(f"Configurazione applicativa sconosciuta: {config_name}")
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__, instance_path=str(instance_dir()), instance_relative_config=True)
     app.config.from_object(CONFIGS[config_name])
     if test_config:
         app.config.update(test_config)

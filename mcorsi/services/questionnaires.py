@@ -191,6 +191,19 @@ def expire_open_attempts(questionnaire: Questionnaire, participant: User) -> boo
     return changed
 
 
+def resumable_attempt(
+    questionnaire: Questionnaire, participant: User
+) -> QuestionnaireAttempt | None:
+    """Tentativo aperto e non scaduto, riprendibile anche a tentativi residui zero."""
+    open_attempts = QuestionnaireAttempt.query.filter_by(
+        questionnaire_id=questionnaire.id,
+        participant_user_id=participant.id,
+        submitted_at=None,
+        open_slot=True,
+    ).all()
+    return next((attempt for attempt in open_attempts if not attempt.is_expired), None)
+
+
 def start_attempt(questionnaire: Questionnaire, participant: User) -> QuestionnaireAttempt:
     if not participant_can_take(questionnaire, participant):
         raise QuestionnaireError("Il questionario non è disponibile per questo account.")

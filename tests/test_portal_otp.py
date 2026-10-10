@@ -274,7 +274,7 @@ def test_existing_company_needs_only_vat_number(app, client):
 
     client.post("/auth/logout")
     with client.session_transaction() as session:
-        session["_user_id"] = admin_id
+        session["_user_id"] = _auth_id(app, admin_id)
         session["_fresh"] = True
     approved = client.post(f"/companies/associations/{employment_id}/approve")
     assert approved.status_code == 302
@@ -299,7 +299,7 @@ def test_unverified_company_blocks_association_approval(app, client):
 
     client.post("/auth/logout")
     with client.session_transaction() as session:
-        session["_user_id"] = admin_id
+        session["_user_id"] = _auth_id(app, admin_id)
         session["_fresh"] = True
     response = client.post(
         f"/companies/associations/{employment_id}/approve", follow_redirects=True
@@ -338,3 +338,8 @@ def test_production_rejects_reused_or_default_keys():
                 "OTP_PEPPER": "development-only-change-me",
             },
         )
+
+
+def _auth_id(app, user_id):
+    with app.app_context():
+        return db.session.get(User, user_id).get_id()

@@ -364,7 +364,7 @@ def test_participant_can_complete_questionnaire_from_mobile_flow(app, client):
             ],
         }
     with client.session_transaction() as browser_session:
-        browser_session["_user_id"] = participant_id
+        browser_session["_user_id"] = _auth_id(app, participant_id)
         browser_session["_fresh"] = True
     started = client.post(f"/participant/questionnaires/{questionnaire_id}/start", data={})
     assert started.status_code == 302
@@ -505,3 +505,44 @@ def test_invalid_questionnaire_json_is_rejected_without_partial_data(app, client
     assert b"Importazione non riuscita" in response.data
     with app.app_context():
         assert Questionnaire.query.count() == 0
+
+
+def _auth_id(app, user_id):
+    with app.app_context():
+        return db.session.get(User, user_id).get_id()
+
+
+def test_last_open_attempt_can_be_resumed_from_dashboard(app, client):
+    from mcorsi.models import AdmissionRequest
+
+    with app.app_context():
+        admin = _user("admin", "admin@example.it")
+        participant = _user("participant", "persona@example.it")
+        course = _course(admin)
+        questionnaire = _questionnaire(course)
+        db.session.add(Enrollment(course=course, participant=participant))
+        db.session.add(
+            AdmissionRequest(course=course, participant=participant, status="approved")
+        )
+        publish_questionnaire(questionnaire, actor=admin)
+        db.session.commit()
+        for _ in range(2):
+            attempt = start_attempt(questionnaire, participant)
+            attempt.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        third = start_attempt(questionnaire, participant)
+        db.session.commit()
+        assert third.attempt_number == 3
+        assert attempts_used(questionnaire, participant) == 3
+        participant_id = participant.id
+        questionnaire_id = questionnaire.id
+        third_id = third.id
+    with client.session_transaction() as browser_session:
+        browser_session["_user_id"] = _auth_id(app, participant_id)
+        browser_session["_fresh"] = True
+    dashboard = client.get("/participant")
+    assert dashboard.status_code == 200
+    assert b"Riprendi" in dashboard.data
+    assert b"Tentativi esauriti" not in dashboard.data
+    started = client.post(f"/participant/questionnaires/{questionnaire_id}/start", data={})
+    assert started.status_code == 302
+    assert third_id in started.headers["Location"]

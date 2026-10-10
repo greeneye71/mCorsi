@@ -4,12 +4,21 @@ from datetime import date, datetime, timedelta, timezone
 from html import escape
 
 from flask import current_app
+from sqlalchemy import update
 
 from ..extensions import db
-from ..models import Certificate, EmailOutbox, Enrollment, NotificationConfiguration
+from ..models import Certificate, Company, EmailOutbox, Enrollment, NotificationConfiguration
 from .mail import MailConfigurationError, MailDeliveryError, send_email
 from .certificates import course_date
 from .secrets import SecretDecryptionError
+
+
+DELIVERY_LEASE = timedelta(minutes=15)
+COMPANY_MESSAGE_TYPES = frozenset({"certificate_expiry_company"})
+
+
+def company_can_receive(company: Company | None) -> bool:
+    return bool(company and company.email and company.verification_status == "verified")
 
 
 def configuration() -> NotificationConfiguration | None:
@@ -107,7 +116,7 @@ def enqueue_reminders(today: date | None = None) -> dict[str, int]:
                 unique_key=f"certificate:{certificate.id}:participant:{certificate.expires_at.isoformat()}",
             )
             counts["certificate_participant"] += bool(queued)
-            if certificate.company and certificate.company.email:
+            if company_can_receive(certificate.company):
                 queued = queue_email(
                     message_type="certificate_expiry_company",
                     recipient=certificate.company.email,
@@ -125,18 +134,53 @@ def enqueue_reminders(today: date | None = None) -> dict[str, int]:
     return counts
 
 
+def _claim(message_id: str, now: datetime) -> bool:
+    """Acquisisce il messaggio con un lease atomico: un solo worker lo invia."""
+    claimed = db.session.execute(
+        update(EmailOutbox)
+        .where(
+            EmailOutbox.id == message_id,
+            EmailOutbox.status == "pending",
+            EmailOutbox.next_attempt_at <= now,
+        )
+        .values(next_attempt_at=now + DELIVERY_LEASE)
+        .execution_options(synchronize_session=False)
+    )
+    db.session.commit()
+    return claimed.rowcount == 1
+
+
+def _recipient_still_authorized(message: EmailOutbox) -> bool:
+    if message.message_type not in COMPANY_MESSAGE_TYPES:
+        return True
+    certificate = db.session.get(Certificate, message.related_id)
+    company = certificate.company if certificate else None
+    return company_can_receive(company) and (
+        company.email.strip().casefold() == message.recipient_email
+    )
+
+
 def deliver_pending(limit: int = 50, now: datetime | None = None) -> dict[str, int]:
     now = now or datetime.now(timezone.utc)
-    messages = (
-        EmailOutbox.query.filter(
-            EmailOutbox.status == "pending", EmailOutbox.next_attempt_at <= now
-        )
+    candidate_ids = [
+        message_id
+        for (message_id,) in db.session.query(EmailOutbox.id)
+        .filter(EmailOutbox.status == "pending", EmailOutbox.next_attempt_at <= now)
         .order_by(EmailOutbox.created_at)
         .limit(limit)
         .all()
-    )
-    result = {"sent": 0, "failed": 0, "deferred": 0}
-    for message in messages:
+    ]
+    result = {"sent": 0, "failed": 0, "deferred": 0, "canceled": 0}
+    for message_id in candidate_ids:
+        if not _claim(message_id, now):
+            continue
+        message = db.session.get(EmailOutbox, message_id, populate_existing=True)
+        if not _recipient_still_authorized(message):
+            message.status = "failed"
+            message.last_error = "Destinatario non più autorizzato; invio annullato."
+            result["canceled"] += 1
+            db.session.commit()
+            continue
         try:
             send_email(
                 recipient=message.recipient_email,

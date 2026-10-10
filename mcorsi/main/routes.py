@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, url_for
+from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, session, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import text
 
@@ -64,10 +64,12 @@ def health_ready():
 @login_required
 def dashboard():
     if not current_user.has_role("admin", "operator"):
-        if current_user.has_role("company_contact"):
+        if current_user.has_role("company_contact") and session.get("company_id"):
             return redirect(url_for("company_portal.dashboard"))
         if current_user.has_role("participant"):
             return redirect(url_for("portal.dashboard"))
+        if current_user.has_role("company_contact"):
+            return redirect(url_for("company_portal.access"))
         abort(403)
     counts = {
         "courses": Course.query.count(),
