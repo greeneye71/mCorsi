@@ -22,3 +22,5 @@ pytest-cache-files-*/
 /schema.sql
 /static/
 /templates/
+
+*.kate-swp
