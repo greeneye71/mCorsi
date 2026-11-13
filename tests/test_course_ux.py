@@ -166,3 +166,66 @@ def test_add_staff_email_is_refused(app, client):
         assert [role.name for role in operator.roles] == ["operator"]
         assert Enrollment.query.count() == 0
         assert AdmissionRequest.query.count() == 0
+
+
+def _course_of_operator_a(app):
+    referent_id = _make_user(app, "referente@example.it", "operator")
+    _make_user(app, "altro@example.it", "operator")
+    _make_user(app, "persona@example.it", "participant")
+    second_id = _make_user(app, "seconda@example.it", "participant")
+    with app.app_context():
+        from datetime import date, time
+
+        from mcorsi.services.courses import create_course
+
+        referent = db.session.get(User, referent_id)
+        course = create_course(
+            actor=referent,
+            data={
+                "title": "Sicurezza",
+                "status": "open",
+                "referent_user_id": referent_id,
+                "session_date": date(2026, 10, 1),
+                "start_time": time(9, 0),
+                "end_time": time(12, 0),
+                "delivery_mode": "online",
+                "certificate_validity_months": 60,
+            },
+        )
+        second = db.session.get(User, second_id)
+        db.session.flush()
+        pending = request_admission(course, second, actor=second)
+        db.session.commit()
+        return course.id, pending.id
+
+
+def test_any_operator_can_enroll_and_decide(app, client):
+    course_id, pending_id = _course_of_operator_a(app)
+    _login(client, "altro@example.it")
+
+    response = client.post(f"/courses/{course_id}/admissions", data={"email": "persona@example.it"})
+    assert response.status_code == 302
+    with app.app_context():
+        assert Enrollment.query.count() == 1
+
+    response = client.post(f"/courses/{course_id}/admissions/{pending_id}/approve", data={})
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(AdmissionRequest, pending_id).status == "approved"
+
+
+def test_participant_cannot_enroll_or_decide(app, client):
+    course_id, pending_id = _course_of_operator_a(app)
+    with app.app_context():
+        auth_id = User.query.filter_by(email="persona@example.it").one().get_id()
+    with client.session_transaction() as browser_session:
+        browser_session["_user_id"] = auth_id
+        browser_session["_fresh"] = True
+
+    response = client.post(f"/courses/{course_id}/admissions", data={"email": "persona@example.it"})
+    assert response.status_code == 403
+    response = client.post(f"/courses/{course_id}/admissions/{pending_id}/approve", data={})
+    assert response.status_code == 403
+    with app.app_context():
+        assert Enrollment.query.count() == 0
+        assert db.session.get(AdmissionRequest, pending_id).status == "pending"

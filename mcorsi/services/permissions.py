@@ -65,4 +65,4 @@ def company_required(view):
 
 
 def can_review_course(course) -> bool:
-    return current_user.has_role("admin") or course.referent_user_id == current_user.id
+    return current_user.has_role("admin") or current_user.has_role("operator")

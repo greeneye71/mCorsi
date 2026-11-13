@@ -136,7 +136,7 @@ def test_full_operator_flow_and_clean_duplication(app, client):
         assert duplicate.enrollments == []
 
 
-def test_only_referent_or_admin_can_decide(app, client):
+def test_any_operator_can_decide(app, client):
     referent_id = _make_user(app, "referente@example.it", "operator")
     other_id = _make_user(app, "altro@example.it", "operator")
     participant_id = _make_user(app, "persona@example.it", "participant")
@@ -167,13 +167,13 @@ def test_only_referent_or_admin_can_decide(app, client):
         f"/courses/{course_id}/admissions/{admission_id}/approve",
         data={"decision_message": "", "internal_note": ""},
     )
-    assert response.status_code == 403
+    assert response.status_code == 302
     with app.app_context():
-        assert db.session.get(AdmissionRequest, admission_id).status == "pending"
-        assert Enrollment.query.count() == 0
+        assert db.session.get(AdmissionRequest, admission_id).status == "approved"
+        assert Enrollment.query.count() == 1
 
 
-def test_unrelated_operator_cannot_add_an_admission(app, client):
+def test_any_operator_can_add_an_admission(app, client):
     referent_id = _make_user(app, "referente@example.it", "operator")
     _make_user(app, "altro@example.it", "operator")
     _make_user(app, "persona@example.it", "participant")
@@ -203,9 +203,10 @@ def test_unrelated_operator_cannot_add_an_admission(app, client):
         data={"email": "persona@example.it"},
     )
 
-    assert response.status_code == 403
+    assert response.status_code == 302
     with app.app_context():
-        assert AdmissionRequest.query.count() == 0
+        assert AdmissionRequest.query.one().status == "approved"
+        assert Enrollment.query.count() == 1
 
 
 def test_changing_company_preserves_employment_history(app, client):
