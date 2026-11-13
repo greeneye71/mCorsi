@@ -173,3 +173,10 @@ def test_deployment_doc_requires_podman_5():
 def test_image_build_uses_host_network_for_dns():
     # Il DNS della rete di build di Podman può fallire: la build usa la rete dell'host.
     assert "podman build --network=host" in _read(SCRIPT)
+
+
+def test_logs_read_from_system_journal_by_container_name():
+    # "journalctl --user -M utente@" fallisce: "Connecting to a machine as non-root is not supported".
+    for text in (_read(SCRIPT), _read("docs/DEPLOYMENT.md")):
+        assert "journalctl --user" not in text
+        assert "CONTAINER_NAME=mcorsi-web" in text

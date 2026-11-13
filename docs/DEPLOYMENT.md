@@ -288,7 +288,7 @@ container web.
 
 ```bash
 sudo sh avvia.sh configura stato
-sudo journalctl --user -M mcorsi@ -u mcorsi-web -n 100 --no-pager
+sudo journalctl CONTAINER_NAME=mcorsi-web -n 100 --no-pager
 sudo systemctl --user -M mcorsi@ status mcorsi-pod mcorsi-tunnel --no-pager
 ```
 

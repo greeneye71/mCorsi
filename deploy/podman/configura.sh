@@ -203,7 +203,7 @@ cmd_stato() {
     printf 'Porta %s aperta nel firewall: %s\n' "$APP_PORT" "$(si_no firewall-cmd --query-port=5100/tcp)"
     printf 'Tunnel configurato: %s\n' "$(si_no as_mcorsi podman secret exists "$SECRET")"
     printf '\nUltime righe del registro:\n'
-    journalctl --user -M "$APP_USER@" -u mcorsi-web.service -n 30 --no-pager || true
+    journalctl CONTAINER_NAME=mcorsi-web -n 30 --no-pager || true
 }
 
 cmd_backup() {
