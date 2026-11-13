@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ heading }} · mCorsi{% endblock %}
 {% block content %}
-<section class="page-heading"><div><p class="eyebrow">Anagrafiche</p><h1>{{ heading }}</h1></div><a class="button button-quiet" href="{{ url_for('participants.index') }}">Annulla</a></section>
+<section class="page-heading"><div><p class="eyebrow">Anagrafiche</p><h1>{{ heading }}</h1></div><a class="button button-quiet" href="{{ return_url }}">Annulla</a></section>
 <form class="panel form-panel" method="post" novalidate>
   {{ form.hidden_tag() }}
+  {% if return_url != url_for('participants.index') %}<input type="hidden" name="next" value="{{ return_url }}">{% endif %}
   <div class="form-section"><div class="section-heading"><h2>Identità</h2><p>Nome e cognome sono obbligatori; gli altri dati completano l'attestato.</p></div>
     <div class="form-grid">
       <div class="field field-wide">{{ form.email.label }}{{ form.email() }}{% for error in form.email.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>

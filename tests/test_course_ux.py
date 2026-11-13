@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 from types import SimpleNamespace
 
+import pytest
+
 from mcorsi.extensions import db
 from mcorsi.models import (
     AdmissionRequest,
@@ -386,3 +388,35 @@ def test_generate_all_only_ready_and_not_already_issued(app, client, monkeypatch
     response = client.post(f"/documents/courses/{course_id}/certificates/all", follow_redirects=True)
     assert calls == [ready_id]
     assert "1 attestati generati, 1 non pronti." in response.get_data(as_text=True)
+
+
+_EDIT_DATA = {
+    "email": "persona@example.it",
+    "first_name": "Anna",
+    "last_name": "Bianchi",
+    "birth_place": "Milano",
+    "birth_date": "1990-01-02",
+    "tax_code": "",
+    "mobile_phone": "",
+    "certificate_title": "",
+    "company_id": "",
+}
+
+
+def test_participant_edit_returns_to_next(app, client):
+    course_id, participant_id = _open_course_with_participant(app, client)
+    response = client.post(
+        f"/participants/{participant_id}/edit?next=/courses/{course_id}", data=_EDIT_DATA
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(f"/courses/{course_id}")
+
+
+@pytest.mark.parametrize("target", ["https://evil.example/", "//evil.example", "/\\evil.example"])
+def test_participant_edit_ignores_external_next(app, client, target):
+    _, participant_id = _open_course_with_participant(app, client)
+    response = client.post(
+        f"/participants/{participant_id}/edit", query_string={"next": target}, data=_EDIT_DATA
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/participants")

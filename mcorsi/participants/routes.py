@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from ..cli import ensure_roles
@@ -17,6 +17,7 @@ from ..services.participants import (
     set_current_company,
     vat_number_variants,
 )
+from ..services.navigation import safe_next
 from ..services.permissions import staff_required
 from .forms import CompanyForm, EmploymentDecisionForm, ParticipantForm
 
@@ -102,6 +103,11 @@ def index():
     return render_template("participants/index.html", participants=users)
 
 
+def _return_url() -> str:
+    requested = request.args.get("next") or request.form.get("next")
+    return safe_next(requested, url_for("participants.index"))
+
+
 @participants_bp.route("/new", methods=["GET", "POST"])
 @staff_required
 def create():
@@ -126,8 +132,10 @@ def create():
             )
             db.session.commit()
             flash("Partecipante creato.", "success")
-            return redirect(url_for("participants.index"))
-    return render_template("participants/form.html", form=form, heading="Nuovo partecipante")
+            return redirect(_return_url())
+    return render_template(
+        "participants/form.html", form=form, heading="Nuovo partecipante", return_url=_return_url()
+    )
 
 
 @participants_bp.route("/<user_id>/edit", methods=["GET", "POST"])
@@ -160,9 +168,10 @@ def edit(user_id: str):
             )
             db.session.commit()
             flash("Partecipante aggiornato.", "success")
-            return redirect(url_for("participants.index"))
+            return redirect(_return_url())
     return render_template(
         "participants/form.html", form=form, heading="Modifica partecipante", participant=user,
+        return_url=_return_url(),
         certificates=Certificate.query.filter_by(participant_user_id=user.id).order_by(Certificate.course_date.desc()).all(),
     )
 
