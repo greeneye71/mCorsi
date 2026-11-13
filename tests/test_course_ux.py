@@ -412,7 +412,7 @@ def test_participant_edit_returns_to_next(app, client):
     assert response.headers["Location"].endswith(f"/courses/{course_id}")
 
 
-@pytest.mark.parametrize("target", ["https://evil.example/", "//evil.example", "/\\evil.example"])
+@pytest.mark.parametrize("target", ["https://evil.example/", "//evil.example", "/\\evil.example", "/\t/evil.example", "/\n/evil.example"])
 def test_participant_edit_ignores_external_next(app, client, target):
     _, participant_id = _open_course_with_participant(app, client)
     response = client.post(
