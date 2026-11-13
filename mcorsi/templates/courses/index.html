@@ -5,6 +5,19 @@
   <div><p class="eyebrow">Formazione</p><h1>Corsi</h1><p class="lead">Ogni voce rappresenta un'edizione con data, referente e codice propri.</p></div>
   <a class="button button-primary" href="{{ url_for('courses.create') }}">Nuovo corso</a>
 </section>
+<form class="panel inline-form" method="get" action="{{ url_for('courses.index') }}">
+  <div class="field"><label for="q">Cerca</label><input id="q" name="q" type="search" value="{{ q }}" placeholder="Titolo o codice"></div>
+  <div class="field"><label for="status">Stato</label>
+    <select id="status" name="status">
+      <option value="">Tutti</option>
+      {% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if pending %}<input type="hidden" name="pending" value="1">{% endif %}
+  <button class="button button-primary" type="submit">Cerca</button>
+  <a class="button button-quiet" href="{{ url_for('courses.index') }}">Azzera</a>
+</form>
+{% if pending %}<p class="lead">Solo corsi con richieste in attesa.</p>{% endif %}
 {% if courses %}
   <div class="card-list">
     {% for course in courses %}
@@ -19,6 +32,7 @@
           <div><dt>Referente</dt><dd>{{ course.referent.display_name }}</dd></div>
           <div><dt>Iscritti</dt><dd>{{ course.enrollments|length }}</dd></div>
         </dl>
+        <a class="button button-quiet" href="{{ url_for('courses.duplicate', course_id=course.id) }}">Duplica</a>
       </article>
     {% endfor %}
   </div>

@@ -229,3 +229,80 @@ def test_participant_cannot_enroll_or_decide(app, client):
     with app.app_context():
         assert Enrollment.query.count() == 0
         assert db.session.get(AdmissionRequest, pending_id).status == "pending"
+
+
+def _seed_listing(app, admin_id):
+    from datetime import date, time
+
+    from mcorsi.services.courses import create_course
+
+    with app.app_context():
+        admin = db.session.get(User, admin_id)
+        ids = {}
+        for title, day, status in [
+            ("Antincendio", date(2026, 3, 1), "open"),
+            ("Primo soccorso", date(2026, 6, 1), "draft"),
+            ("Antincendio avanzato", date(2026, 9, 1), "completed"),
+        ]:
+            course = create_course(
+                actor=admin,
+                data={
+                    "title": title,
+                    "referent_user_id": admin_id,
+                    "session_date": day,
+                    "start_time": time(9, 0),
+                    "end_time": time(13, 0),
+                    "delivery_mode": "online",
+                    "status": status,
+                },
+            )
+            ids[title] = course.id
+        db.session.commit()
+        return ids
+
+
+def test_course_list_search_filter_and_order(app, client):
+    admin_id = _make_user(app, "admin@example.it", "admin")
+    _login(client, "admin@example.it")
+    _seed_listing(app, admin_id)
+
+    page = client.get("/courses").get_data(as_text=True)
+    assert page.index(">Antincendio avanzato<") < page.index(">Primo soccorso<") < page.index(">Antincendio<")
+    assert "/duplicate" in page
+
+    page = client.get("/courses?q=antinc").get_data(as_text=True)
+    assert ">Primo soccorso<" not in page
+    assert ">Antincendio<" in page and ">Antincendio avanzato<" in page
+
+    page = client.get("/courses?status=draft").get_data(as_text=True)
+    assert ">Primo soccorso<" in page and ">Antincendio<" not in page
+
+    assert client.get("/courses?status=xyz").status_code == 200
+
+
+def test_pending_filter_and_dashboard_link(app, client):
+    admin_id = _make_user(app, "admin@example.it", "admin")
+    _make_user(app, "persona@example.it", "participant", first_name="Pia", last_name="Neri")
+    _login(client, "admin@example.it")
+    ids = _seed_listing(app, admin_id)
+    with app.app_context():
+        participant = User.query.filter_by(email="persona@example.it").one()
+        request_admission(db.session.get(Course, ids["Antincendio"]), participant, actor=participant)
+        db.session.commit()
+
+    page = client.get("/courses?pending=1").get_data(as_text=True)
+    assert ">Antincendio<" in page
+    assert ">Primo soccorso<" not in page and ">Antincendio avanzato<" not in page
+
+    dashboard = client.get("/").get_data(as_text=True)
+    assert "/courses?pending=1" in dashboard
+
+
+def test_duplicate_defaults_to_today(app, client):
+    from datetime import date
+
+    admin_id = _make_user(app, "admin@example.it", "admin")
+    _login(client, "admin@example.it")
+    ids = _seed_listing(app, admin_id)
+    page = client.get(f"/courses/{ids['Antincendio']}/duplicate").get_data(as_text=True)
+    assert date.today().isoformat() in page

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import date, timezone
 from zoneinfo import ZoneInfo
 
-from flask import Blueprint, abort, flash, redirect, render_template, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
+from sqlalchemy import and_, or_
 
 from ..extensions import db
-from ..models import AdmissionRequest, Course, User, normalize_email
+from ..models import AdmissionRequest, Course, CourseSession, User, normalize_email
 from ..models import CertificateTemplate, SignatureAsset
 from ..documents.forms import AttendanceForm, CourseCertificateSettingsForm, CourseDocumentForm
 from ..services.certificates import readiness
@@ -24,7 +25,14 @@ from ..services.courses import (
 )
 from ..services.participants import create_minimal_participant
 from ..services.permissions import can_review_course, staff_required
-from .forms import AdmissionAddForm, AdmissionDecisionForm, CourseForm, CourseStatusForm, DuplicateCourseForm
+from .forms import (
+    COURSE_STATUS_CHOICES,
+    AdmissionAddForm,
+    AdmissionDecisionForm,
+    CourseForm,
+    CourseStatusForm,
+    DuplicateCourseForm,
+)
 
 
 courses_bp = Blueprint("courses", __name__, url_prefix="/courses")
@@ -59,8 +67,35 @@ def _course_form_data(form: CourseForm) -> dict:
 @courses_bp.get("")
 @staff_required
 def index():
-    courses = Course.query.order_by(Course.created_at.desc()).all()
-    return render_template("courses/index.html", courses=courses)
+    q = request.args.get("q", "").strip()
+    status = request.args.get("status", "")
+    if status not in dict(COURSE_STATUS_CHOICES):
+        status = ""
+    pending = request.args.get("pending") == "1"
+    query = Course.query.outerjoin(
+        CourseSession,
+        and_(CourseSession.course_id == Course.id, CourseSession.sequence == 1),
+    )
+    if q:
+        pattern = f"%{q}%"
+        query = query.filter(or_(Course.title.ilike(pattern), Course.code.ilike(pattern)))
+    if status:
+        query = query.filter(Course.status == status)
+    if pending:
+        query = query.filter(Course.admission_requests.any(AdmissionRequest.status == "pending"))
+    courses = query.order_by(
+        CourseSession.starts_at.is_(None),
+        CourseSession.starts_at.desc(),
+        Course.created_at.desc(),
+    ).all()
+    return render_template(
+        "courses/index.html",
+        courses=courses,
+        q=q,
+        status=status,
+        pending=pending,
+        status_choices=COURSE_STATUS_CHOICES,
+    )
 
 
 @courses_bp.route("/new", methods=["GET", "POST"])
@@ -161,6 +196,7 @@ def duplicate(course_id: str):
     form.referent_user_id.choices = _staff_choices()
     if not form.is_submitted():
         form.referent_user_id.data = source.referent_user_id
+        form.session_date.data = date.today()
         if source.first_session:
             zone = ZoneInfo(source.timezone_name)
             start = source.first_session.starts_at.replace(tzinfo=timezone.utc).astimezone(zone)

@@ -13,7 +13,7 @@
 <section class="stats-grid" aria-label="Riepilogo">
   <article class="stat-card"><p>Corsi</p><strong>{{ counts.courses }}</strong><a href="{{ url_for('courses.index') }}">Apri elenco</a></article>
   <article class="stat-card"><p>Partecipanti</p><strong>{{ counts.participants }}</strong><a href="{{ url_for('participants.index') }}">Apri anagrafica</a></article>
-  <article class="stat-card"><p>Richieste in attesa</p><strong>{{ counts.pending_admissions }}</strong><span>{{ counts.companies_pending }} aziende da verificare</span></article>
+  <article class="stat-card"><p>Richieste in attesa</p><strong>{{ counts.pending_admissions }}</strong><span>{{ counts.companies_pending }} aziende da verificare</span><a href="{{ url_for('courses.index', pending=1) }}">Vedi</a></article>
 </section>
 
 <section class="panel">
