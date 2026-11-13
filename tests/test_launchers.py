@@ -86,3 +86,11 @@ def test_direct_launchers_explicitly_support_trusted_lan_http():
 
     assert "MCORSI_COOKIE_SECURE=false" not in _read("scripts/run-production.sh")
     assert "MCORSI_COOKIE_SECURE=false" not in _read("scripts/run-production.ps1")
+
+
+def test_entrypoints_load_env_file_from_resolver():
+    for relative_path in ("wsgi.py", "mcp_server.py"):
+        text = _read(relative_path)
+        assert "from mcorsi.startup_secrets import resolve_env_path" in text
+        assert "load_dotenv(resolve_env_path())" in text
+        assert "load_dotenv()" not in text

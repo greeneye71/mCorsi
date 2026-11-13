@@ -303,3 +303,42 @@ def test_prepare_leaves_a_secure_environment_untouched(startup_root, monkeypatch
 
     assert env_path.read_text(encoding="utf-8") == original
     assert not marker_path.exists()
+
+
+def test_resolve_env_path_defaults_to_project_env(monkeypatch):
+    monkeypatch.delenv("MCORSI_ENV_FILE", raising=False)
+
+    assert startup_secrets.resolve_env_path() == startup_secrets.DEFAULT_ENV_PATH
+
+
+def test_resolve_env_path_honors_variable(monkeypatch, startup_root):
+    target = startup_root / "config" / ".env"
+    monkeypatch.setenv("MCORSI_ENV_FILE", str(target))
+
+    assert startup_secrets.resolve_env_path() == target
+
+
+def test_resolve_env_path_rejects_relative_path(monkeypatch):
+    monkeypatch.setenv("MCORSI_ENV_FILE", "config/.env")
+
+    with pytest.raises(StartupSecretError, match="percorso assoluto"):
+        startup_secrets.resolve_env_path()
+
+
+def test_main_prepare_writes_env_file_from_variable(monkeypatch, startup_root):
+    _clear_environment(monkeypatch)
+    env_file = startup_root / "config" / ".env"
+    env_file.parent.mkdir()
+    instance = startup_root / "data" / "instance"
+    instance.mkdir(parents=True)
+    monkeypatch.setenv("MCORSI_ENV_FILE", str(env_file))
+    monkeypatch.setenv("MCORSI_INSTANCE_PATH", str(instance))
+
+    assert startup_secrets.main(["prepare"]) == 0
+    assert "MCORSI_SECRET_KEY=" in env_file.read_text(encoding="utf-8")
+
+
+def test_main_returns_2_for_relative_env_file(monkeypatch):
+    monkeypatch.setenv("MCORSI_ENV_FILE", "config/.env")
+
+    assert startup_secrets.main(["pending"]) == 2

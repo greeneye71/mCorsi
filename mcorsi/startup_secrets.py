@@ -62,6 +62,17 @@ def _instance_path(values: dict[str, str], project_root: Path) -> Path:
     return path
 
 
+def resolve_env_path() -> Path:
+    """Return the ``.env`` path, honoring ``MCORSI_ENV_FILE`` when set."""
+    configured = os.environ.get("MCORSI_ENV_FILE", "").strip()
+    if not configured:
+        return DEFAULT_ENV_PATH
+    path = Path(configured)
+    if not path.is_absolute():
+        raise StartupSecretError("MCORSI_ENV_FILE deve essere un percorso assoluto.")
+    return path
+
+
 def _default_marker_path(env_path: Path = DEFAULT_ENV_PATH) -> Path:
     return _instance_path(_values(env_path), PROJECT_ROOT) / DEFAULT_MARKER_PATH.name
 
@@ -311,9 +322,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     try:
-        marker_path = _default_marker_path()
+        env_path = resolve_env_path()
+        marker_path = _default_marker_path(env_path)
         if args.command == "prepare":
-            prepare_environment(marker_path=marker_path)
+            prepare_environment(env_path=env_path, marker_path=marker_path)
             return 0
         marker = _marker(marker_path)
         if args.command == "pending":
@@ -322,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if marker and marker.get("backup_required") else 1
         if args.command == "needs-rotation":
             return 0 if marker and marker.get("rotation_required") else 1
-        complete_environment(marker_path=marker_path)
+        complete_environment(env_path=env_path, marker_path=marker_path)
         return 0
     except StartupSecretError as exc:
         print(f"ERRORE: {exc}", file=sys.stderr)
