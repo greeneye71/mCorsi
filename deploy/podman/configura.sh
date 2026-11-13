@@ -94,7 +94,8 @@ cmd_installa() {
     ok "cartella backup: $BACKUP_DIR"
 
     printf 'Costruzione immagine (può richiedere alcuni minuti)...\n'
-    podman build -t "$IMAGE" -f "$REPO_ROOT/Containerfile" "$REPO_ROOT"
+    # Rete dell'host: il DNS della rete di build di Podman può non risolvere i mirror.
+    podman build --network=host -t "$IMAGE" -f "$REPO_ROOT/Containerfile" "$REPO_ROOT"
     podman save "$IMAGE" | as_mcorsi podman load
     ok "immagine $IMAGE disponibile per $APP_USER"
 

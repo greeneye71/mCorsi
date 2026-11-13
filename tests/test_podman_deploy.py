@@ -168,3 +168,8 @@ def test_deployment_doc_requires_podman_5():
     doc = _read("docs/DEPLOYMENT.md")
     assert "Podman ≥ 5.0" in doc
     assert "Podman ≥ 4.4" not in doc
+
+
+def test_image_build_uses_host_network_for_dns():
+    # Il DNS della rete di build di Podman può fallire: la build usa la rete dell'host.
+    assert "podman build --network=host" in _read(SCRIPT)
