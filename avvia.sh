@@ -6,10 +6,14 @@ cd "$project_root"
 
 mode=${1:-produzione}
 case "$mode" in
+    configura)
+        shift
+        exec bash "$project_root/deploy/podman/configura.sh" "$@"
+        ;;
     test|sviluppo) mode=test ;;
     produzione|production) mode=produzione ;;
     *)
-        printf 'Uso: sh avvia.sh [test|produzione] [porta] [indirizzo]\n' >&2
+        printf 'Uso: sh avvia.sh [test|produzione] [porta] [indirizzo] | sh avvia.sh configura [comando]\n' >&2
         exit 2
         ;;
 esac

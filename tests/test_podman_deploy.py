@@ -1,7 +1,13 @@
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# Percorso completo: su Windows "bash" nudo risolve prima lo stub WSL di System32.
+BASH = shutil.which("bash")
 
 
 def _read(relative_path: str) -> str:
@@ -69,3 +75,73 @@ def test_user_timers_run_inside_web_container():
         PODMAN + "mcorsi-notifications.service"
     )
     assert "OnCalendar=*-*-* 02:00:00" in _read(PODMAN + "mcorsi-backup.timer")
+
+
+SCRIPT = "deploy/podman/configura.sh"
+
+
+def test_launcher_dispatches_configura_mode():
+    launcher = _read("avvia.sh")
+    assert "configura)" in launcher
+    assert "deploy/podman/configura.sh" in launcher
+
+
+def test_configura_offers_every_command():
+    text = _read(SCRIPT)
+    for command in ("installa", "token", "tunnel-off", "autoavvio-on", "autoavvio-off",
+                    "firewall-on", "firewall-off", "admin", "stato", "backup",
+                    "importa", "disinstalla"):
+        assert f"{command})" in text
+
+
+def test_configura_never_exposes_tunnel_token():
+    text = _read(SCRIPT)
+    assert "read -rs" in text
+    assert "podman secret create --replace mcorsi-tunnel-token -" in text
+    assert "set -x" not in text
+    assert 'echo "$token"' not in text
+    assert "printf '%s\n' \"$token\"" not in text
+
+
+def test_configura_enables_linger_and_opens_lan_port():
+    text = _read(SCRIPT)
+    assert "loginctl enable-linger mcorsi" in text
+    assert "--add-port=5100/tcp" in text
+
+
+def test_tunnel_quadlet_installed_only_with_secret():
+    assert "podman secret exists mcorsi-tunnel-token" in _read(SCRIPT)
+
+
+def test_import_refuses_to_overwrite_existing_env():
+    assert "per non sovrascrivere le chiavi" in _read(SCRIPT)
+
+
+@pytest.mark.skipif(BASH is None, reason="bash non disponibile")
+def test_configura_is_valid_bash():
+    subprocess.run([BASH, "-n", SCRIPT], check=True, cwd=PROJECT_ROOT)
+
+
+def _normalizza(raw):
+    return subprocess.run(
+        [BASH, "-c", f'. ./{SCRIPT} --solo-funzioni; normalizza_token "$1"', "_", raw],
+        capture_output=True, text=True, cwd=PROJECT_ROOT,
+    )
+
+
+@pytest.mark.skipif(BASH is None, reason="bash non disponibile")
+@pytest.mark.parametrize("raw, expected", [
+    ("eyJh" + "A" * 60, "eyJh" + "A" * 60),
+    ("sudo cloudflared service install eyJh" + "A" * 60, "eyJh" + "A" * 60),
+    ("  eyJh" + "A" * 60 + "  ", "eyJh" + "A" * 60),
+])
+def test_normalizza_token_extracts_last_word(raw, expected):
+    out = _normalizza(raw)
+    assert out.returncode == 0 and out.stdout.strip() == expected
+
+
+@pytest.mark.skipif(BASH is None, reason="bash non disponibile")
+@pytest.mark.parametrize("raw", ["", "   ", "corto", "token con caratteri ;rm"])
+def test_normalizza_token_rejects_invalid(raw):
+    out = _normalizza(raw)
+    assert out.returncode != 0 and out.stdout == ""
