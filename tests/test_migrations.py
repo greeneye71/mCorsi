@@ -142,3 +142,39 @@ def test_session_token_migration_resumes_after_partial_failure():
         assert token
     finally:
         connection.close()
+
+
+def test_self_enrollment_migration_defaults_false():
+    database_path = _database_path()
+    app = _app(database_path)
+    _migrate(app, "f3b9c1d7e5a2")
+    connection = sqlite3.connect(database_path)
+    _insert(connection, "users", id="u1", email="admin@example.it")
+    _insert(
+        connection,
+        "courses",
+        id="c1",
+        code="ABC123",
+        creator_user_id="u1",
+        referent_user_id="u1",
+        status="open",
+        delivery_mode="online",
+    )
+    connection.commit()
+    connection.close()
+
+    _migrate(app, "head")
+
+    connection = sqlite3.connect(database_path)
+    try:
+        (flag,) = connection.execute("SELECT self_enrollment_enabled FROM courses").fetchone()
+        assert flag == 0
+        indexes = connection.execute("PRAGMA index_list(course_code_failures)").fetchall()
+        unique_columns = [
+            [row[2] for row in connection.execute(f"PRAGMA index_info({index[1]})")]
+            for index in indexes
+            if index[2]
+        ]
+        assert ["scope", "subject"] in unique_columns
+    finally:
+        connection.close()

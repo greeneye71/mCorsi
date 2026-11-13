@@ -397,6 +397,9 @@ class Course(db.Model):
     code = db.Column(db.String(16), unique=True, nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
     is_historical = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    self_enrollment_enabled = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
     creator_user_id = db.Column(
         db.String(36), db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
@@ -451,6 +454,23 @@ class Course(db.Model):
 
     def __repr__(self) -> str:
         return f"<Course {self.code} {self.title}>"
+
+
+class CourseCodeFailure(db.Model):
+    """Errori consecutivi di inserimento del codice corso, per utente o per IP."""
+
+    __tablename__ = "course_code_failures"
+    __table_args__ = (
+        db.UniqueConstraint("scope", "subject", name="uq_course_code_failures_scope_subject"),
+        db.CheckConstraint("scope IN ('user', 'ip')", name="ck_course_code_failures_scope"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=new_uuid)
+    scope = db.Column(db.String(8), nullable=False)
+    subject = db.Column(db.String(64), nullable=False)
+    failures = db.Column(db.Integer, nullable=False, default=0)
+    last_failure_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
+    blocked_until = db.Column(db.DateTime(timezone=True), nullable=True)
 
 
 class CourseSession(db.Model):
