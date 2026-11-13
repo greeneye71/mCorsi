@@ -40,7 +40,7 @@
 </section>
 
 <section class="panel spaced-panel">
-  <div class="panel-heading"><div><p class="eyebrow">Partecipanti</p><h2>Richieste e iscritti</h2></div><span>{{ course.enrollments|length }} ammessi</span></div>
+  <div class="panel-heading"><div><p class="eyebrow">Partecipanti</p><h2>Iscritti e richieste</h2><p class="muted">Lo staff iscrive direttamente; le richieste dal portale restano da approvare.</p></div><span>{{ course.enrollments|length }} iscritti</span></div>
   <form class="inline-form" method="post" action="{{ url_for('courses.add_admission', course_id=course.id) }}">
     {{ admission_form.hidden_tag() }}
     <div class="field grow-field">{{ admission_form.email.label }}{{ admission_form.email(placeholder="partecipante@example.it") }}</div>

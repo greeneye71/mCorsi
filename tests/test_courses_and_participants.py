@@ -106,18 +106,10 @@ def test_full_operator_flow_and_clean_duplication(app, client):
     assert b"Riferimenti legislativi" in detail.data
     assert b"Principi di prevenzione" in detail.data
 
-    requested = client.post(
+    enrolled = client.post(
         f"/courses/{course_id}/admissions", data={"email": "partecipante@example.it"}
     )
-    assert requested.status_code == 302
-    with app.app_context():
-        admission_id = AdmissionRequest.query.one().id
-
-    approved = client.post(
-        f"/courses/{course_id}/admissions/{admission_id}/approve",
-        data={"decision_message": "Benvenuto", "internal_note": "Verificato"},
-    )
-    assert approved.status_code == 302
+    assert enrolled.status_code == 302
     with app.app_context():
         assert AdmissionRequest.query.one().status == "approved"
         assert Enrollment.query.count() == 1

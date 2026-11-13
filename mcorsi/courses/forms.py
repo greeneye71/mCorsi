@@ -75,7 +75,7 @@ class AdmissionAddForm(FlaskForm):
     email = EmailField(
         "Email del partecipante", validators=[DataRequired(), Email(), Length(max=320)]
     )
-    submit = SubmitField("Registra richiesta")
+    submit = SubmitField("Iscrivi")
 
 
 class AdmissionDecisionForm(FlaskForm):

@@ -258,3 +258,19 @@ def decide_admission(
         detail={"course_id": admission.course_id, "participant_user_id": admission.participant_user_id},
     )
     return admission
+
+
+def enroll_participant(course: Course, participant: User, *, actor: User) -> Enrollment:
+    admission = AdmissionRequest.query.filter_by(
+        course_id=course.id, participant_user_id=participant.id
+    ).first()
+    if admission is None:
+        admission = request_admission(course, participant, actor=actor)
+        db.session.flush()
+    elif admission.status == "approved":
+        raise CourseOperationError("Il partecipante è già iscritto.")
+    elif admission.status == "rejected":
+        raise CourseOperationError("La richiesta di questo partecipante è stata rifiutata.")
+    decide_admission(admission, actor=actor, approve=True)
+    db.session.flush()
+    return Enrollment.query.filter_by(admission_request_id=admission.id).one()

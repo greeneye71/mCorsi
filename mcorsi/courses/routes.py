@@ -19,7 +19,7 @@ from ..services.courses import (
     create_course,
     decide_admission,
     duplicate_course,
-    request_admission,
+    enroll_participant,
     update_course,
 )
 from ..services.permissions import can_review_course, staff_required
@@ -194,9 +194,9 @@ def add_admission(course_id: str):
             flash("Partecipante non trovato: crealo prima nell'anagrafica.", "error")
         else:
             try:
-                request_admission(course, participant, actor=current_user)
+                enroll_participant(course, participant, actor=current_user)
                 db.session.commit()
-                flash("Richiesta di ammissione registrata.", "success")
+                flash(f"{participant.display_name} iscritto al corso.", "success")
             except CourseOperationError as exc:
                 db.session.rollback()
                 flash(str(exc), "error")
