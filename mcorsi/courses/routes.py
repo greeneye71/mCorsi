@@ -22,6 +22,7 @@ from ..services.courses import (
     enroll_participant,
     update_course,
 )
+from ..services.participants import create_minimal_participant
 from ..services.permissions import can_review_course, staff_required
 from .forms import AdmissionAddForm, AdmissionDecisionForm, CourseForm, CourseStatusForm, DuplicateCourseForm
 
@@ -190,8 +191,31 @@ def add_admission(course_id: str):
     form = AdmissionAddForm()
     if form.validate_on_submit():
         participant = User.query.filter_by(email=normalize_email(form.email.data)).first()
-        if participant is None or not participant.has_role("participant"):
-            flash("Partecipante non trovato: crealo prima nell'anagrafica.", "error")
+        first_name = (form.first_name.data or "").strip()
+        last_name = (form.last_name.data or "").strip()
+        if participant is None:
+            if first_name and last_name:
+                try:
+                    participant = create_minimal_participant(
+                        email=form.email.data,
+                        first_name=first_name,
+                        last_name=last_name,
+                        actor=current_user,
+                    )
+                    enroll_participant(course, participant, actor=current_user)
+                    db.session.commit()
+                    flash(
+                        f"{participant.display_name} creato e iscritto. "
+                        "Completa l'anagrafica per poter emettere l'attestato.",
+                        "success",
+                    )
+                except CourseOperationError as exc:
+                    db.session.rollback()
+                    flash(str(exc), "error")
+            else:
+                flash("Email non trovata: indica nome e cognome per creare il partecipante.", "error")
+        elif not participant.has_role("participant"):
+            flash("Questa email appartiene a un utente dello staff.", "error")
         else:
             try:
                 enroll_participant(course, participant, actor=current_user)

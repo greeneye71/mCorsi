@@ -75,6 +75,8 @@ class AdmissionAddForm(FlaskForm):
     email = EmailField(
         "Email del partecipante", validators=[DataRequired(), Email(), Length(max=320)]
     )
+    first_name = StringField("Nome", validators=[Optional(), Length(max=120)])
+    last_name = StringField("Cognome", validators=[Optional(), Length(max=120)])
     submit = SubmitField("Iscrivi")
 
 

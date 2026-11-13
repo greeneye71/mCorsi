@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 from datetime import date, datetime, timezone
 
-from ..models import Employment, ParticipantProfile, User
+from ..extensions import db
+from ..models import Employment, ParticipantProfile, User, normalize_email
+from .audit import record_event
 
 
 class EmploymentVerificationError(ValueError):
@@ -158,3 +160,28 @@ def reject_company_association(employment: Employment, *, actor: User) -> None:
     employment.ended_on = employment.ended_on or date.today()
     employment.reviewed_by_user_id = actor.id
     employment.reviewed_at = datetime.now(timezone.utc)
+
+
+def create_minimal_participant(*, email: str, first_name: str, last_name: str, actor: User) -> User:
+    from ..cli import ensure_roles
+
+    roles = ensure_roles()
+    user = User(
+        email=normalize_email(email),
+        first_name=first_name.strip(),
+        last_name=last_name.strip(),
+        is_active=True,
+        profile_completed=False,
+    )
+    user.roles.append(roles["participant"])
+    user.participant_profile = ParticipantProfile()
+    db.session.add(user)
+    db.session.flush()
+    record_event(
+        "participant.created",
+        actor=actor,
+        target_type="user",
+        target_id=user.id,
+        detail={"email": user.email, "source": "course_page"},
+    )
+    return user

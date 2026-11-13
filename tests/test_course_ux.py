@@ -120,3 +120,49 @@ def test_staff_add_twice_reports_already_enrolled(app, client):
     assert "Il partecipante è già iscritto." in response.get_data(as_text=True)
     with app.app_context():
         assert Enrollment.query.count() == 1
+
+
+def test_add_unknown_email_with_names_creates_and_enrolls(app, client):
+    course_id, _participant_id = _open_course_with_participant(app, client)
+    response = client.post(
+        f"/courses/{course_id}/admissions",
+        data={"email": "Nuovo@Example.it", "first_name": "Mario", "last_name": "Rossi"},
+        follow_redirects=True,
+    )
+    page = response.get_data(as_text=True)
+    assert "creato e iscritto" in page
+    assert "Completa" in page
+    with app.app_context():
+        user = User.query.filter_by(email="nuovo@example.it").one()
+        assert user.has_role("participant") and not user.profile_completed
+        assert user.participant_profile is not None
+        assert Enrollment.query.filter_by(participant_user_id=user.id).count() == 1
+
+
+def test_add_unknown_email_without_names_asks_for_them(app, client):
+    course_id, _participant_id = _open_course_with_participant(app, client)
+    response = client.post(
+        f"/courses/{course_id}/admissions",
+        data={"email": "nuovo@example.it", "first_name": "Mario"},
+        follow_redirects=True,
+    )
+    assert "indica nome e cognome" in response.get_data(as_text=True)
+    with app.app_context():
+        assert User.query.filter_by(email="nuovo@example.it").first() is None
+        assert Enrollment.query.count() == 0
+
+
+def test_add_staff_email_is_refused(app, client):
+    course_id, _participant_id = _open_course_with_participant(app, client)
+    operator_id = _make_user(app, "operatore@example.it", "operator")
+    response = client.post(
+        f"/courses/{course_id}/admissions",
+        data={"email": "operatore@example.it", "first_name": "Op", "last_name": "Era"},
+        follow_redirects=True,
+    )
+    assert "appartiene a un utente dello staff" in response.get_data(as_text=True)
+    with app.app_context():
+        operator = db.session.get(User, operator_id)
+        assert [role.name for role in operator.roles] == ["operator"]
+        assert Enrollment.query.count() == 0
+        assert AdmissionRequest.query.count() == 0
