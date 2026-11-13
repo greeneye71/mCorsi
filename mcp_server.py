@@ -1,11 +1,8 @@
-from dotenv import load_dotenv
+from envfile import load_env_file
 
-from mcorsi.startup_secrets import resolve_env_path
+load_env_file()
 
-load_dotenv(resolve_env_path())
-
-from mcorsi.mcp_server import run
-
+from mcorsi.mcp_server import run  # noqa: E402
 
 if __name__ == "__main__":
     run()

@@ -1,12 +1,10 @@
 import os
 
-from dotenv import load_dotenv
+from envfile import load_env_file
 
-from mcorsi.startup_secrets import resolve_env_path
+load_env_file()
 
-load_dotenv(resolve_env_path())
-
-from mcorsi import create_app
+from mcorsi import create_app  # noqa: E402
 
 
 app = create_app(os.environ.get("MCORSI_ENV", "production"))

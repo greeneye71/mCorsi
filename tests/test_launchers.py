@@ -88,9 +88,25 @@ def test_direct_launchers_explicitly_support_trusted_lan_http():
     assert "MCORSI_COOKIE_SECURE=false" not in _read("scripts/run-production.ps1")
 
 
-def test_entrypoints_load_env_file_from_resolver():
+def test_entrypoints_load_env_file_before_importing_mcorsi():
+    # mcorsi.config legge os.environ all'importazione: il .env va caricato prima.
     for relative_path in ("wsgi.py", "mcp_server.py"):
         text = _read(relative_path)
-        assert "from mcorsi.startup_secrets import resolve_env_path" in text
-        assert "load_dotenv(resolve_env_path())" in text
+        load = text.index("load_env_file()")
+        assert "from envfile import load_env_file" in text
+        assert text.index("mcorsi") > load
         assert "load_dotenv()" not in text
+
+
+def test_envfile_honours_absolute_env_file_and_rejects_relative(tmp_path, monkeypatch):
+    import pytest
+
+    import envfile
+
+    monkeypatch.setenv("MCORSI_ENV_FILE", str(tmp_path / ".env"))
+    assert envfile.resolve_env_path() == tmp_path / ".env"
+    monkeypatch.delenv("MCORSI_ENV_FILE")
+    assert envfile.resolve_env_path() == PROJECT_ROOT / ".env"
+    monkeypatch.setenv("MCORSI_ENV_FILE", "relativo/.env")
+    with pytest.raises(ValueError):
+        envfile.resolve_env_path()

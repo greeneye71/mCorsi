@@ -82,3 +82,47 @@ def test_startup_marker_follows_instance_path(tmp_path, monkeypatch):
     assert startup_secrets._default_marker_path(tmp_path / "missing.env") == (
         tmp_path / ".secret-migration.json"
     )
+
+
+def test_wsgi_loads_external_env_file_before_reading_config(tmp_path):
+    # Nel container il file .env sta in /config: deve essere caricato prima che
+    # mcorsi.config legga os.environ, altrimenti i segreti risultano mancanti.
+    from cryptography.fernet import Fernet
+    import secrets as std_secrets
+
+    env_file = tmp_path / "config" / ".env"
+    env_file.parent.mkdir()
+    env_file.write_text(
+        "\n".join(
+            [
+                f"MCORSI_SECRET_KEY={std_secrets.token_urlsafe(48)}",
+                f"MCORSI_OTP_PEPPER={std_secrets.token_urlsafe(48)}",
+                f"MCORSI_MCP_TOKEN_PEPPER={std_secrets.token_urlsafe(48)}",
+                f"MCORSI_ENCRYPTION_KEY={Fernet.generate_key().decode()}",
+                f"MCORSI_BACKUP_ENCRYPTION_KEY={Fernet.generate_key().decode()}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("MCORSI_")}
+    data = tmp_path / "data"
+    environment.update(
+        {
+            "MCORSI_ENV": "production",
+            "MCORSI_ENV_FILE": str(env_file),
+            "MCORSI_INSTANCE_PATH": str(data / "instance"),
+            "MCORSI_BACKUP_PATH": str(tmp_path / "backups"),
+            "MCORSI_STORAGE_PATH": str(data / "instance" / "storage"),
+            "MCORSI_DATABASE_URL": "sqlite:///" + (data / "db.sqlite3").as_posix(),
+            "PYTHONPATH": str(Path(__file__).resolve().parents[1]),
+        }
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", "import wsgi"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
