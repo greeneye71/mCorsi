@@ -145,3 +145,10 @@ def test_normalizza_token_extracts_last_word(raw, expected):
 def test_normalizza_token_rejects_invalid(raw):
     out = _normalizza(raw)
     assert out.returncode != 0 and out.stdout == ""
+
+
+def test_deployment_doc_covers_podman_menu_and_migration():
+    doc = _read("docs/DEPLOYMENT.md")
+    for needle in ("sudo sh avvia.sh configura", "loginctl enable-linger mcorsi",
+                   "firewall-cmd", "configura.sh importa", "podman secret"):
+        assert needle in doc

@@ -207,7 +207,128 @@ essere sostituita nella configurazione SMTP. Le chiavi `MCORSI_*` nel file
 `.env` non sono password utente e non devono essere rigenerate come procedura di
 recupero; ripristinarle dalla copia protetta o dal gestore dei segreti.
 
+## Fedora + Podman (avvio automatico)
+
+Su Fedora (o un'altra distribuzione con systemd e Podman ≥ 4.4) mCorsi può
+girare in container rootless gestiti da systemd tramite Quadlet. Dopo un
+riavvio della macchina applicazione, server MCP e tunnel Cloudflare ripartono
+da soli, senza login.
+
+Componenti installati:
+
+- utente di sistema `mcorsi` senza shell, con *linger* attivo
+  (`loginctl enable-linger mcorsi`): i suoi servizi partono al boot;
+- pod `mcorsi` con i container `mcorsi-web` (porta 5100), `mcorsi-mcp`
+  (solo `127.0.0.1:8001`, interno al pod) e, se configurato, `mcorsi-tunnel`;
+- volumi Podman `mcorsi-data` (database e `instance`) e `mcorsi-env` (file
+  `.env` con le chiavi), più la cartella `/var/backups/mcorsi` montata con
+  `:Z` per SELinux;
+- timer utente per il backup notturno (02:00) e le notifiche.
+
+### Prerequisiti
+
+```bash
+sudo dnf install podman firewalld git
+git clone <repository> ~/mcorsi && cd ~/mcorsi
+```
+
+### Menu di configurazione
+
+Tutte le operazioni passano dal menu, da eseguire come root nella cartella del
+repository:
+
+```bash
+sudo sh avvia.sh configura            # menu numerato
+sudo sh avvia.sh configura stato      # comando diretto
+```
+
+| Comando | Effetto |
+|---|---|
+| `installa` | crea l'utente `mcorsi`, attiva il linger, costruisce l'immagine, installa Quadlet e timer, avvia il pod |
+| `token` | chiede il token del tunnel Cloudflare (input nascosto) e avvia `mcorsi-tunnel` |
+| `tunnel-off` | ferma il tunnel e cancella il secret |
+| `autoavvio-on` / `autoavvio-off` | attiva o disattiva l'avvio al boot (linger) |
+| `firewall-on` / `firewall-off` | apre o chiude la porta 5100/tcp con `firewall-cmd` |
+| `admin` | crea il primo amministratore in modo interattivo |
+| `stato` | servizi, container, linger, porta, tunnel e ultime righe di log |
+| `backup` | esegue subito un backup |
+| `importa <instance> <.env>` | importa i dati di un'installazione precedente |
+| `disinstalla` | rimuove servizi e Quadlet; volumi, backup, secret e utente restano |
+
+### Prima installazione
+
+1. `sudo sh avvia.sh configura installa`: alla prima esecuzione il container
+   web genera il file `.env` nel volume `mcorsi-env` con chiavi nuove.
+2. `sudo sh avvia.sh configura token`: nel pannello Cloudflare Zero Trust
+   (**Networking → Tunnels**) creare il tunnel, copiare il comando di
+   installazione e incollarlo intero quando richiesto; il menu tiene solo il
+   token. La route resta `http://localhost:5100` perché il tunnel gira nello
+   stesso pod. Il token viene salvato come `podman secret`
+   (`mcorsi-tunnel-token`) dell'utente `mcorsi`: non compare in file, log o
+   argomenti di comando e non viene mai mostrato.
+3. `sudo sh avvia.sh configura firewall-on` per l'accesso dalla rete locale
+   (equivale a `firewall-cmd --permanent --add-port=5100/tcp` più reload).
+4. `sudo sh avvia.sh configura admin` per creare il primo amministratore.
+5. Verificare l'avvio automatico: `sudo reboot`, poi
+   `sudo sh avvia.sh configura stato` e
+   `curl http://IP-DEL-SERVER:5100/health/ready`.
+
+### Aggiornamento
+
+```bash
+cd ~/mcorsi && git pull
+sudo sh avvia.sh configura installa
+```
+
+`installa` ricostruisce l'immagine e riavvia il pod; volumi, `.env`, secret e
+backup non vengono toccati. Le migrazioni del database girano all'avvio del
+container web.
+
+### Diagnosi
+
+```bash
+sudo sh avvia.sh configura stato
+sudo journalctl --user -M mcorsi@ -u mcorsi-web -n 100 --no-pager
+sudo systemctl --user -M mcorsi@ status mcorsi-pod mcorsi-tunnel --no-pager
+```
+
+Se dopo il riavvio nulla parte, verificare che il linger sia attivo
+(`loginctl show-user mcorsi -p Linger`) o rieseguire `autoavvio-on`.
+
+### Migrazione dall'avvio manuale (opzionale)
+
+Per portare i dati di un'installazione avviata a mano (container lanciati con
+`podman run`, oppure `avvia.sh` diretto con `cloudflared` di sistema):
+
+1. individuare i vecchi container e dove tengono i dati:
+   `sudo podman ps -a`, `podman ps -a` e
+   `podman inspect <nome> --format '{{json .Mounts}}'`; per l'avvio diretto
+   i dati sono in `instance/` e `.env` nella cartella del repository;
+2. fermare i vecchi container e impedirne la ripartenza:
+   `podman update --restart=no <nome>` e `podman stop <nome>`;
+3. installare e importare:
+   ```bash
+   sudo sh avvia.sh configura installa
+   sudo bash deploy/podman/configura.sh importa /percorso/instance /percorso/.env
+   ```
+   L'importazione rifiuta di sovrascrivere un `.env` già presente nel volume.
+   Poiché `installa` avvia subito l'applicazione, che genera un `.env` nuovo,
+   prima di importare fermare il pod e rimuovere quel volume (contiene solo le
+   chiavi appena generate, nessun dato):
+   ```bash
+   sudo systemctl --user -M mcorsi@ stop mcorsi-pod.service
+   sudo runuser -u mcorsi -- env XDG_RUNTIME_DIR=/run/user/$(id -u mcorsi) podman volume rm mcorsi-env
+   ```
+4. verificare accesso, login e dati, poi ripetere il test di riavvio;
+5. eliminare i vecchi container: `podman rm <nome>`;
+6. se il tunnel girava come servizio di sistema, disattivarlo:
+   `sudo systemctl disable --now cloudflared`.
+
 ## Cloudflare Tunnel
+
+Con il deploy Fedora + Podman il tunnel si configura dal menu
+(`sudo sh avvia.sh configura token`, vedi sopra) e non serve installare
+`cloudflared` sull'host. Per le altre installazioni:
 
 Cloudflare raccomanda un tunnel gestito da remoto. Nel pannello Cloudflare:
 
