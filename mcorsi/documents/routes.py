@@ -266,6 +266,56 @@ def create_certificate(enrollment_id: str):
     return redirect(url_for("courses.detail", course_id=enrollment.course_id))
 
 
+@documents_bp.post("/courses/<course_id>/attendance/all")
+@staff_required
+def mark_all_attended(course_id: str):
+    course = db.get_or_404(Course, course_id)
+    count = 0
+    for enrollment in course.enrollments:
+        if enrollment.attendance_status != "pending":
+            continue
+        enrollment.attendance_status = "attended"
+        record_event(
+            "enrollment.attendance_updated",
+            actor=current_user,
+            target_type="enrollment",
+            target_id=enrollment.id,
+            detail={"attendance_status": "attended"},
+        )
+        count += 1
+    db.session.commit()
+    flash(f"{count} presenze confermate.", "success")
+    return redirect(url_for("courses.detail", course_id=course.id))
+
+
+@documents_bp.post("/courses/<course_id>/certificates/all")
+@staff_required
+def generate_all_certificates(course_id: str):
+    course = db.get_or_404(Course, course_id)
+    generated = skipped = 0
+    for enrollment in list(course.enrollments):
+        if enrollment.certificate is not None:
+            continue
+        if not readiness(enrollment)[0]:
+            skipped += 1
+            continue
+        try:
+            with db.session.begin_nested():
+                certificate = generate_certificate(enrollment, actor=current_user)
+            record_event(
+                "certificate.generated",
+                actor=current_user,
+                target_type="certificate",
+                target_id=certificate.id,
+            )
+            generated += 1
+        except CertificateError:
+            skipped += 1
+    db.session.commit()
+    flash(f"{generated} attestati generati, {skipped} non pronti.", "success")
+    return redirect(url_for("courses.detail", course_id=course.id))
+
+
 @documents_bp.route("/participant/upload", methods=["GET", "POST"])
 @participant_required
 def participant_upload():

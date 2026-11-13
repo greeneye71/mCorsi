@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+from datetime import date
+from types import SimpleNamespace
+
 from mcorsi.extensions import db
-from mcorsi.models import AdmissionRequest, Course, Enrollment, User
+from mcorsi.models import (
+    AdmissionRequest,
+    AuditLog,
+    Certificate,
+    Course,
+    Enrollment,
+    StoredFile,
+    User,
+)
 from mcorsi.services.courses import request_admission
 
 from test_courses_and_participants import _course_payload, _login, _make_user
@@ -306,3 +317,72 @@ def test_duplicate_defaults_to_today(app, client):
     ids = _seed_listing(app, admin_id)
     page = client.get(f"/courses/{ids['Antincendio']}/duplicate").get_data(as_text=True)
     assert date.today().isoformat() in page
+
+
+def _course_with_enrollments(app, client, count):
+    admin_id = _make_user(app, "admin@example.it", "admin")
+    _login(client, "admin@example.it")
+    course_id = _new_course(app, client, admin_id)
+    client.post(f"/courses/{course_id}/status", data={"status": "open"})
+    ids = []
+    for index in range(count):
+        _make_user(app, f"p{index}@example.it", "participant")
+        client.post(f"/courses/{course_id}/admissions", data={"email": f"p{index}@example.it"})
+        with app.app_context():
+            participant = User.query.filter_by(email=f"p{index}@example.it").one()
+            ids.append(Enrollment.query.filter_by(participant_user_id=participant.id).one().id)
+    return admin_id, course_id, ids
+
+
+def test_mark_all_attended_keeps_absent(app, client):
+    _, course_id, ids = _course_with_enrollments(app, client, 3)
+    with app.app_context():
+        db.session.get(Enrollment, ids[2]).attendance_status = "absent"
+        db.session.commit()
+    response = client.post(f"/documents/courses/{course_id}/attendance/all", follow_redirects=True)
+    assert "2 presenze confermate." in response.get_data(as_text=True)
+    with app.app_context():
+        statuses = [db.session.get(Enrollment, item).attendance_status for item in ids]
+        assert statuses == ["attended", "attended", "absent"]
+        assert AuditLog.query.filter_by(event_type="enrollment.attendance_updated").count() == 2
+
+
+def test_generate_all_only_ready_and_not_already_issued(app, client, monkeypatch):
+    admin_id, course_id, ids = _course_with_enrollments(app, client, 3)
+    ready_id, issued_id, not_ready_id = ids
+    with app.app_context():
+        enrollment = db.session.get(Enrollment, issued_id)
+        stored = StoredFile(
+            storage_key="test/issued.pdf",
+            original_name="issued.pdf",
+            mime_type="application/pdf",
+            size_bytes=1,
+            sha256="0" * 64,
+            uploaded_by_user_id=admin_id,
+        )
+        db.session.add(
+            Certificate(
+                participant_user_id=enrollment.participant_user_id,
+                course_id=course_id,
+                enrollment=enrollment,
+                pdf_file=stored,
+                certificate_number="GIA-1",
+                title_snapshot="Corso",
+                course_date=date.today(),
+            )
+        )
+        db.session.commit()
+
+    calls = []
+
+    def fake_generate(enrollment, *, actor):
+        calls.append(enrollment.id)
+        return SimpleNamespace(id="fake", certificate_number="N-1")
+
+    monkeypatch.setattr("mcorsi.documents.routes.generate_certificate", fake_generate)
+    monkeypatch.setattr(
+        "mcorsi.documents.routes.readiness", lambda e: (e.id in {ready_id, issued_id}, [])
+    )
+    response = client.post(f"/documents/courses/{course_id}/certificates/all", follow_redirects=True)
+    assert calls == [ready_id]
+    assert "1 attestati generati, 1 non pronti." in response.get_data(as_text=True)
