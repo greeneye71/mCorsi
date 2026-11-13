@@ -1,0 +1,25 @@
+[Unit]
+Description=mCorsi interfaccia web
+
+[Container]
+Image=localhost/mcorsi:latest
+Pod=mcorsi.pod
+ContainerName=mcorsi-web
+Exec=/app/scripts/run-production.sh 5100
+Volume=mcorsi-data.volume:/data
+Volume=mcorsi-env.volume:/config
+Volume=/var/backups/mcorsi:/backups:Z
+# Come avvia.sh: HTTP sulla rete locale, HTTPS lo termina il tunnel.
+Environment=MCORSI_COOKIE_SECURE=false
+HealthCmd=python3 -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:5100/health/ready',timeout=3)"
+HealthInterval=30s
+HealthStartPeriod=60s
+# L'unità risulta avviata solo quando l'app risponde: MCP e tunnel la aspettano.
+Notify=healthy
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

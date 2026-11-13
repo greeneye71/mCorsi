@@ -1,0 +1,10 @@
+[Unit]
+Description=Pod mCorsi (web, MCP e tunnel)
+
+[Pod]
+PodName=mcorsi
+# Solo l'interfaccia web: il server MCP resta in ascolto su localhost dentro il pod.
+PublishPort=5100:5100
+
+[Install]
+WantedBy=default.target

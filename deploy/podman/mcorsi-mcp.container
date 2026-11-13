@@ -1,0 +1,18 @@
+[Unit]
+Description=mCorsi server MCP
+After=mcorsi-web.service
+Requires=mcorsi-web.service
+
+[Container]
+Image=localhost/mcorsi:latest
+Pod=mcorsi.pod
+ContainerName=mcorsi-mcp
+Exec=/app/scripts/run-mcp.sh
+Volume=mcorsi-data.volume:/data
+Volume=mcorsi-env.volume:/config
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

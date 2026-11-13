@@ -1,0 +1,8 @@
+[Unit]
+Description=Promemoria mCorsi
+Requires=mcorsi-web.service
+After=mcorsi-web.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/podman exec mcorsi-web flask --app wsgi notifications run

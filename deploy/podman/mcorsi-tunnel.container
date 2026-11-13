@@ -1,0 +1,20 @@
+[Unit]
+Description=mCorsi tunnel Cloudflare
+After=mcorsi-web.service
+Requires=mcorsi-web.service
+
+[Container]
+# Versione fissata: aggiornarla a mano dopo aver letto le note di rilascio.
+Image=docker.io/cloudflare/cloudflared:2026.11.0
+Pod=mcorsi.pod
+ContainerName=mcorsi-tunnel
+Exec=tunnel --no-autoupdate run
+# Il token arriva solo dal secret Podman: mai su file, argomenti o log.
+Secret=mcorsi-tunnel-token,type=env,target=TUNNEL_TOKEN
+
+[Service]
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
