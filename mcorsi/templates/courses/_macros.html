@@ -1,0 +1,8 @@
+{% macro render_field(field, wide=False, span_two=False, hint="") -%}
+<div class="field{% if wide %} field-wide{% endif %}{% if span_two %} field-span-two{% endif %}">
+  <label for="{{ field.id }}">{{ field.label.text }}{% if field.flags.required %} *{% endif %}</label>
+  {{ field(**kwargs) }}
+  {% if hint %}<p class="field-hint">{{ hint }}</p>{% endif %}
+  {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+</div>
+{%- endmacro %}

@@ -70,6 +70,7 @@ def test_complete_course_journey_from_otp_to_certificate(app, client, monkeypatc
     with app.app_context():
         course = Course.query.filter_by(title="Sicurezza end-to-end").one()
         course_id, course_code = course.id, course.code
+    assert client.post(f"/courses/{course_id}/status", data={"status": "open"}).status_code == 302
 
     assert participant_client.post(
         "/participant/access", data={"email": "partecipante-e2e@example.it"}

@@ -12,7 +12,10 @@ from ..models import CertificateTemplate, SignatureAsset
 from ..documents.forms import AttendanceForm, CourseCertificateSettingsForm, CourseDocumentForm
 from ..services.certificates import readiness
 from ..services.courses import (
+    COURSE_STATUS_LABELS,
+    COURSE_STATUS_TRANSITIONS,
     CourseOperationError,
+    change_course_status,
     create_course,
     decide_admission,
     duplicate_course,
@@ -20,7 +23,7 @@ from ..services.courses import (
     update_course,
 )
 from ..services.permissions import can_review_course, staff_required
-from .forms import AdmissionAddForm, AdmissionDecisionForm, CourseForm, DuplicateCourseForm
+from .forms import AdmissionAddForm, AdmissionDecisionForm, CourseForm, CourseStatusForm, DuplicateCourseForm
 
 
 courses_bp = Blueprint("courses", __name__, url_prefix="/courses")
@@ -42,7 +45,6 @@ def _course_form_data(form: CourseForm) -> dict:
         "description": form.description.data or "",
         "legal_references": form.legal_references.data or "",
         "topics": form.topics.data or "",
-        "status": form.status.data,
         "referent_user_id": form.referent_user_id.data,
         "session_date": form.session_date.data,
         "start_time": form.start_time.data,
@@ -105,7 +107,25 @@ def detail(course_id: str):
         certificate_settings_form=certificate_settings_form,
         attendance_form=AttendanceForm(),
         enrollment_readiness=enrollment_readiness,
+        status_form=CourseStatusForm(),
+        next_statuses=COURSE_STATUS_TRANSITIONS.get(course.status, ()),
     )
+
+
+@courses_bp.post("/<course_id>/status")
+@staff_required
+def change_status(course_id: str):
+    course = db.get_or_404(Course, course_id)
+    form = CourseStatusForm()
+    if form.validate_on_submit():
+        try:
+            change_course_status(course, actor=current_user, new_status=form.status.data)
+            db.session.commit()
+            flash(f"Stato aggiornato: {COURSE_STATUS_LABELS[course.status]}.", "success")
+        except CourseOperationError as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+    return redirect(url_for("courses.detail", course_id=course.id))
 
 
 @courses_bp.route("/<course_id>/edit", methods=["GET", "POST"])

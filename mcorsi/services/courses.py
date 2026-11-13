@@ -24,6 +24,25 @@ from .audit import record_event
 COURSE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
+COURSE_STATUS_LABELS: dict[str, str] = {
+    "draft": "Bozza",
+    "open": "Aperto",
+    "in_progress": "In corso",
+    "completed": "Concluso",
+    "canceled": "Annullato",
+    "archived": "Archiviato",
+}
+
+COURSE_STATUS_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "draft": ("open", "canceled"),
+    "open": ("in_progress", "canceled"),
+    "in_progress": ("completed", "canceled"),
+    "completed": ("archived",),
+    "canceled": (),
+    "archived": (),
+}
+
+
 class CourseOperationError(ValueError):
     pass
 
@@ -64,7 +83,7 @@ def create_course(*, actor: User, data: dict) -> Course:
         legal_references=data.get("legal_references", "").strip(),
         topics=data.get("topics", "").strip(),
         code=generate_course_code(),
-        status=data["status"],
+        status=data.get("status", "draft"),
         is_historical=bool(data.get("is_historical", False)),
         creator_user_id=actor.id,
         referent_user_id=data["referent_user_id"],
@@ -92,7 +111,8 @@ def update_course(course: Course, *, actor: User, data: dict) -> Course:
     course.description = data.get("description", "").strip()
     course.legal_references = data.get("legal_references", "").strip()
     course.topics = data.get("topics", "").strip()
-    course.status = data["status"]
+    if "status" in data:
+        course.status = data["status"]
     course.referent_user_id = data["referent_user_id"]
     course.delivery_mode = data["delivery_mode"]
     course.meeting_url = data.get("meeting_url", "").strip()
@@ -104,6 +124,21 @@ def update_course(course: Course, *, actor: User, data: dict) -> Course:
         target_type="course",
         target_id=course.id,
         detail={"before": before, "after": {"title": course.title, "status": course.status, "referent": course.referent_user_id}},
+    )
+    return course
+
+
+def change_course_status(course: Course, *, actor: User, new_status: str) -> Course:
+    previous = course.status
+    if new_status not in COURSE_STATUS_TRANSITIONS.get(previous, ()):
+        raise CourseOperationError("Passaggio di stato non consentito.")
+    course.status = new_status
+    record_event(
+        "course.status_changed",
+        actor=actor,
+        target_type="course",
+        target_id=course.id,
+        detail={"from": previous, "to": new_status},
     )
     return course
 

@@ -121,15 +121,10 @@ def create_app(config_name: str = "production", test_config: dict | None = None)
 
     @app.context_processor
     def shared_labels():
+        from .services.courses import COURSE_STATUS_LABELS
+
         return {
-            "course_status_labels": {
-                "draft": "Bozza",
-                "open": "Aperto",
-                "in_progress": "In corso",
-                "completed": "Concluso",
-                "canceled": "Annullato",
-                "archived": "Archiviato",
-            },
+            "course_status_labels": COURSE_STATUS_LABELS,
             "admission_status_labels": {
                 "pending": "In attesa",
                 "approved": "Ammesso",

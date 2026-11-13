@@ -4,6 +4,7 @@ from datetime import date, time
 
 from flask_wtf import FlaskForm
 from wtforms import (
+    HiddenField,
     DateField,
     EmailField,
     IntegerField,
@@ -38,7 +39,6 @@ class CourseForm(FlaskForm):
         "Riferimenti legislativi", validators=[Optional(), Length(max=10000)]
     )
     topics = TextAreaField("Argomenti trattati", validators=[Optional(), Length(max=20000)])
-    status = SelectField("Stato", choices=COURSE_STATUS_CHOICES, validators=[DataRequired()])
     referent_user_id = SelectField("Referente", validators=[DataRequired()])
     session_date = DateField("Data", validators=[DataRequired()], default=date.today)
     start_time = TimeField("Ora iniziale", validators=[DataRequired()], default=time(9, 0))
@@ -83,3 +83,7 @@ class AdmissionDecisionForm(FlaskForm):
         "Messaggio per il partecipante", validators=[Optional(), Length(max=500)]
     )
     internal_note = StringField("Nota interna", validators=[Optional(), Length(max=500)])
+
+
+class CourseStatusForm(FlaskForm):
+    status = HiddenField(validators=[DataRequired()])

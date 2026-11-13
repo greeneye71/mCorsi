@@ -3,7 +3,7 @@
 {% block content %}
 <section class="page-heading detail-heading">
   <div><div class="card-title-row"><span class="badge badge-{{ course.status }}">{{ course_status_labels[course.status] }}</span><code>{{ course.code }}</code></div><h1>{{ course.title }}</h1><p class="lead">{{ course.description or 'Nessuna descrizione.' }}</p></div>
-  <div class="action-row"><a class="button button-quiet" href="{{ url_for('courses.duplicate', course_id=course.id) }}">Duplica</a><a class="button button-primary" href="{{ url_for('courses.edit', course_id=course.id) }}">Modifica</a></div>
+  <div class="action-row">{% set status_actions = {'open': 'Apri iscrizioni', 'in_progress': 'Avvia corso', 'completed': 'Concludi corso', 'archived': 'Archivia', 'canceled': 'Annulla corso'} %}{% for next_status in next_statuses %}<form method="post" action="{{ url_for('courses.change_status', course_id=course.id) }}">{{ status_form.csrf_token }}<input type="hidden" name="status" value="{{ next_status }}"><button class="button {{ 'button-quiet' if next_status == 'canceled' else 'button-primary' }}" type="submit">{{ status_actions[next_status] }}</button></form>{% endfor %}<a class="button button-quiet" href="{{ url_for('courses.duplicate', course_id=course.id) }}">Duplica</a><a class="button button-primary" href="{{ url_for('courses.edit', course_id=course.id) }}">Modifica</a></div>
 </section>
 
 <section class="course-program-grid spaced-panel">
