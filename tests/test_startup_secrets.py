@@ -342,3 +342,21 @@ def test_main_returns_2_for_relative_env_file(monkeypatch):
     monkeypatch.setenv("MCORSI_ENV_FILE", "config/.env")
 
     assert startup_secrets.main(["pending"]) == 2
+
+
+def test_main_returns_2_for_symlinked_env_file(monkeypatch, startup_root):
+    _clear_environment(monkeypatch)
+    real = startup_root / "real.env"
+    real.write_text("", encoding="utf-8")
+    link = startup_root / ".env"
+    try:
+        link.symlink_to(real)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink non consentiti in questo ambiente")
+    instance = startup_root / "instance"
+    instance.mkdir()
+    monkeypatch.setenv("MCORSI_ENV_FILE", str(link))
+    monkeypatch.setenv("MCORSI_INSTANCE_PATH", str(instance))
+
+    assert startup_secrets.main(["prepare"]) == 2
+    assert real.read_text(encoding="utf-8") == ""

@@ -234,7 +234,7 @@ cmd_importa() {
     install -m 0600 "$file_env" "$staging/env"
     chown -R "$APP_USER:$APP_USER" "$staging"
     as_mcorsi podman run --rm -v mcorsi-data:/data -v mcorsi-env:/config -v "$staging:/src:Z" "$IMAGE" \
-        sh -c 'mkdir -p /data/instance && cp -a /src/instance/. /data/instance/ && cp -a /src/env /config/.env'
+        sh -c 'rm -rf /data/instance && mkdir -p /data/instance && cp -a /src/instance/. /data/instance/ && cp -a /src/env /config/.env'
     ok "dati e configurazione importati"
     user_systemctl start mcorsi-pod.service
     ok "applicazione riavviata"

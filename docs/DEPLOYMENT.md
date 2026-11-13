@@ -209,7 +209,7 @@ recupero; ripristinarle dalla copia protetta o dal gestore dei segreti.
 
 ## Fedora + Podman (avvio automatico)
 
-Su Fedora (o un'altra distribuzione con systemd e Podman ≥ 4.4) mCorsi può
+Su Fedora (o un'altra distribuzione con systemd e Podman ≥ 5.0) mCorsi può
 girare in container rootless gestiti da systemd tramite Quadlet. Dopo un
 riavvio della macchina applicazione, server MCP e tunnel Cloudflare ripartono
 da soli, senza login.
@@ -319,6 +319,8 @@ Per portare i dati di un'installazione avviata a mano (container lanciati con
    sudo systemctl --user -M mcorsi@ stop mcorsi-pod.service
    sudo runuser -u mcorsi -- env XDG_RUNTIME_DIR=/run/user/$(id -u mcorsi) podman volume rm mcorsi-env
    ```
+   L'importazione sostituisce per intero la cartella `instance` del volume
+   `mcorsi-data`: del database vuoto creato da `installa` non resta nulla.
 4. verificare accesso, login e dati, poi ripetere il test di riavvio;
 5. eliminare i vecchi container: `podman rm <nome>`;
 6. se il tunnel girava come servizio di sistema, disattivarlo:

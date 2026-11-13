@@ -152,3 +152,19 @@ def test_deployment_doc_covers_podman_menu_and_migration():
     for needle in ("sudo sh avvia.sh configura", "loginctl enable-linger mcorsi",
                    "firewall-cmd", "configura.sh importa", "podman secret"):
         assert needle in doc
+
+
+def test_containerfile_pins_database_and_storage_inside_data_volume():
+    text = _read("Containerfile")
+    assert "MCORSI_DATABASE_URL=sqlite:////data/instance/mcorsi-v2.sqlite3" in text
+    assert "MCORSI_STORAGE_PATH=/data/instance/storage" in text
+
+
+def test_import_replaces_instance_instead_of_merging():
+    assert "rm -rf /data/instance && mkdir -p /data/instance" in _read(SCRIPT)
+
+
+def test_deployment_doc_requires_podman_5():
+    doc = _read("docs/DEPLOYMENT.md")
+    assert "Podman ≥ 5.0" in doc
+    assert "Podman ≥ 4.4" not in doc

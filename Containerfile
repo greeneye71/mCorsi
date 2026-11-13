@@ -17,7 +17,9 @@ RUN chmod +x scripts/*.sh \
 ENV MCORSI_ENV_FILE=/config/.env \
     MCORSI_INSTANCE_PATH=/data/instance \
     MCORSI_BACKUP_PATH=/backups \
-    MCORSI_ENV=production
+    MCORSI_ENV=production \
+    MCORSI_DATABASE_URL=sqlite:////data/instance/mcorsi-v2.sqlite3 \
+    MCORSI_STORAGE_PATH=/data/instance/storage
 
 EXPOSE 5100
 # Nessun punto di ingresso fisso: il comando lo decide il Quadlet.
