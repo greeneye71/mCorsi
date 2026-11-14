@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Il tuo profilo · mCorsi{% endblock %}
 {% block content %}
+{% set enrolling = enrolling_course is defined and enrolling_course %}
+{% if enrolling %}
+<section class="page-heading"><div><p class="eyebrow">Iscrizione al corso</p><h1>Stai per iscriverti a: {{ enrolling_course.title }}</h1><p class="lead">Controlla i tuoi dati: saranno usati per produrre correttamente gli attestati.</p></div></section>
+{% else %}
 <section class="page-heading"><div><p class="eyebrow">{{ 'Primo accesso' if is_first_access else 'Area partecipante' }}</p><h1>{{ 'Completa il tuo profilo' if is_first_access else 'Il tuo profilo' }}</h1><p class="lead">Questi dati saranno usati per produrre correttamente gli attestati.</p></div></section>
+{% if is_first_access and course_code_form is defined and course_code_form %}
+<section class="panel join-panel"><div><p class="eyebrow">Hai un codice?</p><h2>Partecipa a un corso</h2></div><form class="join-form" method="post" action="{{ url_for('portal.add_admission') }}">{{ course_code_form.hidden_tag() }}<div class="field">{{ course_code_form.code.label }}{{ course_code_form.code(autocomplete="off", autocapitalize="characters", placeholder="ABCD234567") }}</div>{{ course_code_form.submit(class="button button-primary") }}</form></section>
+{% endif %}
+{% endif %}
 <form class="panel form-panel" method="post" novalidate>{{ form.hidden_tag() }}
   <div class="form-section"><div class="section-heading"><h2>Dati anagrafici</h2><p>Nome, cognome, luogo e data di nascita sono obbligatori.</p></div><div class="form-grid">
     <div class="field">{{ form.first_name.label }}{{ form.first_name(autocomplete="given-name") }}{% for error in form.first_name.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
@@ -19,6 +27,6 @@
       <div class="field">{{ form.company_province.label }}{{ form.company_province() }}</div><div class="field">{{ form.company_country.label }}{{ form.company_country() }}</div><div class="field">{{ form.company_email.label }}{{ form.company_email() }}{% for error in form.company_email.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div><div class="field">{{ form.company_pec.label }}{{ form.company_pec() }}</div>
     </div></details>
   </div>
-  <div class="form-actions">{{ form.submit(class="button button-primary") }}</div>
+  <div class="form-actions">{% if enrolling %}{{ form.submit(class="button button-primary", value="Conferma e iscriviti") }}{% else %}{{ form.submit(class="button button-primary") }}{% endif %}</div>
 </form>
 {% endblock %}

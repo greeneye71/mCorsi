@@ -9,7 +9,20 @@ from flask_login import current_user, login_user
 from ..extensions import db
 from ..models import AdmissionRequest, Certificate, Company, Course, ParticipantProfile
 from ..services.audit import record_event
-from ..services.courses import CourseOperationError, request_admission
+from ..services.course_code_throttle import (
+    CourseCodeThrottled,
+    check_course_code_allowed,
+    record_course_code_failure,
+    reset_course_code_failures,
+)
+from ..services.courses import (
+    SELF_ENROLLMENT_UNAVAILABLE,
+    CourseOperationError,
+    accepts_self_enrollment,
+    request_admission,
+    self_enroll,
+    self_enrollment_problem,
+)
 from ..services.mail import MailConfigurationError, MailDeliveryError
 from ..services.otp import OtpError, OtpRateLimitError, request_participant_code, verify_participant_code
 from ..services.participants import (
@@ -31,6 +44,8 @@ from .forms import CourseCodeForm, OtpRequestForm, OtpVerifyForm, ParticipantPro
 
 
 portal_bp = Blueprint("portal", __name__, url_prefix="/participant")
+
+PENDING_SELF_ENROLLMENT = "pending_self_enrollment"
 
 
 def _masked_email(value: str) -> str:
@@ -113,9 +128,86 @@ def _new_company_valid(form: ParticipantProfileForm) -> bool:
     return valid
 
 
-@portal_bp.route("/profile", methods=["GET", "POST"])
-@participant_required
-def profile():
+def _apply_profile_form(form: ParticipantProfileForm) -> bool:
+    company = None
+    vat_number = normalize_vat_number(form.vat_number.data or "")
+    if vat_number:
+        if not is_valid_italian_vat_number(vat_number):
+            form.vat_number.errors.append("La partita IVA italiana non è valida.")
+            return False
+        company = Company.query.filter(
+            Company.vat_number.in_(vat_number_variants(vat_number))
+        ).first()
+        if company is None:
+            if not _new_company_valid(form):
+                return False
+            company = Company(
+                business_name=form.company_business_name.data.strip(),
+                vat_number=vat_number,
+                tax_code=normalize_identifier(form.company_tax_code.data or ""),
+                address=form.company_address.data.strip(),
+                postal_code=form.company_postal_code.data.strip(),
+                city=form.company_city.data.strip(),
+                province=(form.company_province.data or "").strip().upper(),
+                country=(form.company_country.data or "IT").strip().upper(),
+                email=form.company_email.data.strip().casefold(),
+                pec=(form.company_pec.data or "").strip().casefold(),
+                verification_status="pending",
+                source="participant",
+            )
+            db.session.add(company)
+            db.session.flush()
+            record_event(
+                "company.created",
+                actor=current_user,
+                target_type="company",
+                target_id=company.id,
+                detail={
+                    "vat_number": company.vat_number,
+                    "verification_status": company.verification_status,
+                    "source": company.source,
+                },
+            )
+
+    current_user.first_name = form.first_name.data.strip()
+    current_user.last_name = form.last_name.data.strip()
+    current_user.mobile_phone = (form.mobile_phone.data or "").strip()
+    if current_user.participant_profile is None:
+        current_user.participant_profile = ParticipantProfile()
+        db.session.add(current_user.participant_profile)
+    profile = current_user.participant_profile
+    profile.birth_place = form.birth_place.data.strip()
+    profile.birth_date = form.birth_date.data
+    profile.tax_code = normalize_identifier(form.tax_code.data or "")
+    profile.certificate_title = (form.certificate_title.data or "").strip()
+    employment = request_company_association(
+        profile, company.id if company else "", requester=current_user
+    )
+    db.session.flush()
+    current_user.profile_completed = True
+    record_event(
+        "participant.profile_completed",
+        actor=current_user,
+        target_type="user",
+        target_id=current_user.id,
+        detail={
+            "company_id": company.id if company else None,
+            "employment_id": employment.id if employment else None,
+            "association_status": employment.verification_status if employment else None,
+        },
+    )
+    if employment and employment.verification_status == "pending":
+        record_event(
+            "employment.association_requested",
+            actor=current_user,
+            target_type="employment",
+            target_id=employment.id,
+            detail={"company_id": employment.company_id},
+        )
+    return True
+
+
+def _profile_form_and_context() -> tuple[ParticipantProfileForm, object]:
     profile = current_user.participant_profile
     form = ParticipantProfileForm(obj=current_user)
     current_company = None
@@ -131,104 +223,37 @@ def profile():
             form.tax_code.data = profile.tax_code
             form.certificate_title.data = profile.certificate_title
         _fill_company_form(form, current_company)
+    return form, pending_employment
 
-    if form.validate_on_submit():
-        company = None
-        vat_number = normalize_vat_number(form.vat_number.data or "")
-        if vat_number:
-            if not is_valid_italian_vat_number(vat_number):
-                form.vat_number.errors.append("La partita IVA italiana non è valida.")
-                return render_template(
-                    "portal/profile.html",
-                    form=form,
-                    is_first_access=not current_user.profile_completed,
-                    pending_employment=pending_employment,
-                )
-            company = Company.query.filter(
-                Company.vat_number.in_(vat_number_variants(vat_number))
-            ).first()
-            if company is None:
-                if not _new_company_valid(form):
-                    return render_template(
-                        "portal/profile.html",
-                        form=form,
-                        is_first_access=not current_user.profile_completed,
-                        pending_employment=pending_employment,
-                    )
-                company = Company(
-                    business_name=form.company_business_name.data.strip(),
-                    vat_number=vat_number,
-                    tax_code=normalize_identifier(form.company_tax_code.data or ""),
-                    address=form.company_address.data.strip(),
-                    postal_code=form.company_postal_code.data.strip(),
-                    city=form.company_city.data.strip(),
-                    province=(form.company_province.data or "").strip().upper(),
-                    country=(form.company_country.data or "IT").strip().upper(),
-                    email=form.company_email.data.strip().casefold(),
-                    pec=(form.company_pec.data or "").strip().casefold(),
-                    verification_status="pending",
-                    source="participant",
-                )
-                db.session.add(company)
-                db.session.flush()
-                record_event(
-                    "company.created",
-                    actor=current_user,
-                    target_type="company",
-                    target_id=company.id,
-                    detail={
-                        "vat_number": company.vat_number,
-                        "verification_status": company.verification_status,
-                        "source": company.source,
-                    },
-                )
 
-        current_user.first_name = form.first_name.data.strip()
-        current_user.last_name = form.last_name.data.strip()
-        current_user.mobile_phone = (form.mobile_phone.data or "").strip()
-        if current_user.participant_profile is None:
-            current_user.participant_profile = ParticipantProfile()
-            db.session.add(current_user.participant_profile)
-        profile = current_user.participant_profile
-        profile.birth_place = form.birth_place.data.strip()
-        profile.birth_date = form.birth_date.data
-        profile.tax_code = normalize_identifier(form.tax_code.data or "")
-        profile.certificate_title = (form.certificate_title.data or "").strip()
-        employment = request_company_association(
-            profile, company.id if company else "", requester=current_user
-        )
-        db.session.flush()
-        current_user.profile_completed = True
-        record_event(
-            "participant.profile_completed",
-            actor=current_user,
-            target_type="user",
-            target_id=current_user.id,
-            detail={
-                "company_id": company.id if company else None,
-                "employment_id": employment.id if employment else None,
-                "association_status": employment.verification_status if employment else None,
-            },
-        )
-        if employment and employment.verification_status == "pending":
-            record_event(
-                "employment.association_requested",
-                actor=current_user,
-                target_type="employment",
-                target_id=employment.id,
-                detail={"company_id": employment.company_id},
-            )
-        db.session.commit()
-        if employment and employment.verification_status == "pending":
-            flash("Profilo salvato. L'associazione all'azienda è in verifica.", "success")
-        else:
-            flash("Profilo salvato.", "success")
-        return redirect(url_for("portal.dashboard"))
+def _render_profile(form, pending_employment, **extra):
     return render_template(
         "portal/profile.html",
         form=form,
         is_first_access=not current_user.profile_completed,
         pending_employment=pending_employment,
+        **extra,
+    )
+
+
+@portal_bp.route("/profile", methods=["GET", "POST"])
+@participant_required
+def profile():
+    form, pending_employment = _profile_form_and_context()
+    if form.validate_on_submit():
+        if not _apply_profile_form(form):
+            return _render_profile(form, pending_employment)
+        employment = current_user.participant_profile.pending_employment
+        db.session.commit()
+        if employment is not None:
+            flash("Profilo salvato. L'associazione all'azienda è in verifica.", "success")
+        else:
+            flash("Profilo salvato.", "success")
+        return redirect(url_for("portal.dashboard"))
+    return _render_profile(
+        form,
+        pending_employment,
+        course_code_form=None if current_user.profile_completed else CourseCodeForm(),
     )
 
 
@@ -278,25 +303,87 @@ def dashboard():
     )
 
 
+def _after_code_redirect():
+    if current_user.profile_completed:
+        return redirect(url_for("portal.dashboard"))
+    return redirect(url_for("portal.profile"))
+
+
 @portal_bp.post("/admissions")
 @participant_required
 def add_admission():
-    if not current_user.profile_completed:
-        return redirect(url_for("portal.profile"))
     form = CourseCodeForm()
-    if form.validate_on_submit():
-        code = normalize_identifier(form.code.data)
-        course = Course.query.filter_by(code=code).first()
-        if course is None or course.status != "open":
-            flash("Codice non valido o corso non aperto alle richieste.", "error")
-        else:
-            try:
-                request_admission(course, current_user)
-                db.session.commit()
-                flash("Richiesta inviata al referente del corso.", "success")
-            except CourseOperationError as exc:
-                db.session.rollback()
-                flash(str(exc), "error")
-    else:
+    if not form.validate_on_submit():
         flash("Controlla il codice del corso.", "error")
-    return redirect(url_for("portal.dashboard"))
+        return _after_code_redirect()
+    ip = request.remote_addr or ""
+    try:
+        check_course_code_allowed(current_user.id, ip)
+    except CourseCodeThrottled as exc:
+        flash(str(exc), "error")
+        return _after_code_redirect()
+
+    code = normalize_identifier(form.code.data)
+    course = Course.query.filter_by(code=code).first()
+    valid = course is not None and (
+        accepts_self_enrollment(course)
+        or (not course.self_enrollment_enabled and course.status == "open")
+    )
+    if not valid:
+        record_course_code_failure(current_user, ip)
+        db.session.commit()
+        flash(SELF_ENROLLMENT_UNAVAILABLE, "error")
+        return _after_code_redirect()
+
+    reset_course_code_failures(current_user.id, ip)
+    db.session.commit()
+    if course.self_enrollment_enabled:
+        problem = self_enrollment_problem(course, current_user)
+        if problem:
+            flash(problem, "error")
+            return _after_code_redirect()
+        session[PENDING_SELF_ENROLLMENT] = course.id
+        return redirect(url_for("portal.confirm_enrollment"))
+
+    if not current_user.profile_completed:
+        flash("Completa il profilo prima di chiedere l'ammissione.", "error")
+        return redirect(url_for("portal.profile"))
+    try:
+        request_admission(course, current_user)
+        db.session.commit()
+        flash("Richiesta inviata al referente del corso.", "success")
+    except CourseOperationError as exc:
+        db.session.rollback()
+        flash(str(exc), "error")
+    return _after_code_redirect()
+
+
+@portal_bp.route("/enroll/confirm", methods=["GET", "POST"])
+@participant_required
+def confirm_enrollment():
+    course_id = session.get(PENDING_SELF_ENROLLMENT)
+    course = db.session.get(Course, course_id) if course_id else None
+    if course is None:
+        session.pop(PENDING_SELF_ENROLLMENT, None)
+        return redirect(url_for("portal.dashboard"))
+    if not accepts_self_enrollment(course):
+        session.pop(PENDING_SELF_ENROLLMENT, None)
+        flash(SELF_ENROLLMENT_UNAVAILABLE, "error")
+        return redirect(url_for("portal.dashboard"))
+
+    form, pending_employment = _profile_form_and_context()
+    if form.validate_on_submit():
+        if not _apply_profile_form(form):
+            return _render_profile(form, pending_employment, enrolling_course=course)
+        try:
+            self_enroll(course, current_user)
+        except CourseOperationError as exc:
+            db.session.rollback()
+            session.pop(PENDING_SELF_ENROLLMENT, None)
+            flash(str(exc), "error")
+            return redirect(url_for("portal.dashboard"))
+        db.session.commit()
+        session.pop(PENDING_SELF_ENROLLMENT, None)
+        flash("Iscrizione completata: puoi svolgere il questionario.", "success")
+        return redirect(url_for("portal.dashboard"))
+    return _render_profile(form, pending_employment, enrolling_course=course)
