@@ -285,3 +285,51 @@ def enroll_participant(course: Course, participant: User, *, actor: User) -> Enr
     decide_admission(admission, actor=actor, approve=True)
     db.session.flush()
     return Enrollment.query.filter_by(admission_request_id=admission.id).one()
+
+
+SELF_ENROLLMENT_STATUSES = ("open", "in_progress")
+SELF_ENROLLMENT_UNAVAILABLE = "Codice non valido o corso non aperto alle richieste."
+
+
+def accepts_self_enrollment(course: Course) -> bool:
+    return bool(course.self_enrollment_enabled) and course.status in SELF_ENROLLMENT_STATUSES
+
+
+def self_enrollment_problem(course: Course, participant: User) -> str | None:
+    if Enrollment.query.filter_by(course_id=course.id, participant_user_id=participant.id).first():
+        return "Sei già iscritto a questo corso."
+    admission = AdmissionRequest.query.filter_by(
+        course_id=course.id, participant_user_id=participant.id
+    ).first()
+    if admission is not None and admission.status == "rejected":
+        return "La tua richiesta per questo corso è stata respinta: contatta il referente."
+    return None
+
+
+def self_enroll(course: Course, participant: User) -> Enrollment:
+    if not accepts_self_enrollment(course):
+        raise CourseOperationError(SELF_ENROLLMENT_UNAVAILABLE)
+    problem = self_enrollment_problem(course, participant)
+    if problem:
+        raise CourseOperationError(problem)
+    admission = AdmissionRequest.query.filter_by(
+        course_id=course.id, participant_user_id=participant.id
+    ).first()
+    if admission is None:
+        admission = request_admission(course, participant, actor=participant)
+        db.session.flush()
+    decide_admission(
+        admission,
+        actor=participant,
+        approve=True,
+        decision_message="Iscrizione diretta con codice",
+    )
+    db.session.flush()
+    record_event(
+        "enrollment.self_enrolled",
+        actor=participant,
+        target_type="course",
+        target_id=course.id,
+        detail={"participant": participant.id},
+    )
+    return Enrollment.query.filter_by(admission_request_id=admission.id).one()
