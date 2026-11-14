@@ -172,6 +172,8 @@ code, .course-code { font-family: ui-monospace, SFMono-Regular, Consolas, monosp
 .participant-hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); }
 .join-panel { display: grid; grid-template-columns: .7fr 1.3fr; gap: 2rem; align-items: end; color: #fff; background: var(--brand-dark); border-color: var(--brand-dark); }
 .join-panel .eyebrow { color: #c8def2; }
+.join-panel-highlight { border: 2px solid var(--brand); box-shadow: 0 0 0 4px rgba(200, 222, 242, .55), 0 18px 40px rgba(16, 42, 67, .22); }
+.join-panel-highlight h2 { font-size: 1.6rem; }
 .join-form { display: flex; align-items: end; gap: .8rem; }
 .join-form .field { flex: 1; margin: 0; }
 .join-form .field label { color: #e1edf7; }

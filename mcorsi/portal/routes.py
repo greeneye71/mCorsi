@@ -7,7 +7,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from flask_login import current_user, login_user
 
 from ..extensions import db
-from ..models import AdmissionRequest, Certificate, Company, Course, ParticipantProfile
+from ..models import AdmissionRequest, Certificate, Company, Course, Enrollment, ParticipantProfile
 from ..services.audit import record_event
 from ..services.course_code_throttle import (
     CourseCodeThrottled,
@@ -293,9 +293,21 @@ def dashboard():
             expiry_states[certificate.id] = "expiring"
         else:
             expiry_states[certificate.id] = "valid"
+    has_active_enrollment = (
+        db.session.query(Enrollment.id)
+        .join(Course, Enrollment.course_id == Course.id)
+        .filter(
+            Enrollment.participant_user_id == current_user.id,
+            Course.status.in_(("open", "in_progress")),
+        )
+        .first()
+        is not None
+    )
+    has_pending_admission = any(admission.status == "pending" for admission in admissions)
     return render_template(
         "portal/dashboard.html",
         admissions=admissions,
+        highlight_code_box=not has_active_enrollment and not has_pending_admission,
         questionnaire_states=questionnaire_states,
         course_code_form=CourseCodeForm(),
         certificates=certificates,

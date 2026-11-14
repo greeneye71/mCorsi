@@ -275,3 +275,36 @@ def test_already_enrolled_code_shows_message(app, client):
     assert not response.headers["Location"].endswith("/participant/enroll/confirm")
     assert "Sei già iscritto a questo corso." in _flashes(client)
     assert _pending_key(client) is None
+
+
+def test_dashboard_highlights_code_box_without_active_courses(app, client):
+    _, code = _course(app)
+    _request_and_verify(app, client)
+    _complete_profile(client)
+
+    page = client.get("/participant").get_data(as_text=True)
+    assert page.count("join-form") == 1
+    assert "join-panel-highlight" in page
+    assert "Inserisci il codice del corso" in page
+    assert page.index("Inserisci il codice del corso") < page.index("Corsi e richieste")
+
+    client.post("/participant/admissions", data={"code": code})
+    client.post("/participant/enroll/confirm", data=_profile_payload())
+    assert _enrollments(app) == 1
+
+    page = client.get("/participant").get_data(as_text=True)
+    assert page.count("join-form") == 1
+    assert "join-panel-highlight" not in page
+    assert "Inserisci il codice del corso" not in page
+    assert page.index("Partecipa a un corso") < page.index("Corsi e richieste")
+
+
+def test_dashboard_pending_request_hides_highlight(app, client):
+    _, code = _course(app, enabled=False)
+    _request_and_verify(app, client)
+    _complete_profile(client)
+    client.post("/participant/admissions", data={"code": code})
+
+    page = client.get("/participant").get_data(as_text=True)
+    assert "join-panel-highlight" not in page
+    assert "Partecipa a un corso" in page
