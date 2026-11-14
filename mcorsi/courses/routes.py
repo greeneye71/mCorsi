@@ -61,6 +61,7 @@ def _course_form_data(form: CourseForm) -> dict:
         "delivery_mode": form.delivery_mode.data,
         "meeting_url": form.meeting_url.data or "",
         "certificate_validity_months": form.certificate_validity_months.data,
+        "self_enrollment_enabled": form.self_enrollment_enabled.data,
     }
 
 

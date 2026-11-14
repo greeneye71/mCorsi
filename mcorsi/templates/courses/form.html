@@ -29,6 +29,13 @@
     <div class="section-heading"><h2>Attestato</h2><p>Lascia vuoto se non è prevista una scadenza.</p></div>
     <div class="form-grid">{{ render_field(form.certificate_validity_months, placeholder="es. 60") }}</div>
   </div>
+  <div class="form-section">
+    <div class="section-heading"><h2>Ammissione</h2></div>
+    <div class="field field-wide">
+      <label class="check-row">{{ form.self_enrollment_enabled() }} <span>{{ form.self_enrollment_enabled.label.text }}</span></label>
+      <p class="field-hint">Chi inserisce il codice viene iscritto subito, finché il corso non è chiuso.</p>
+    </div>
+  </div>
   <div class="form-actions">{{ form.submit(class="button button-primary") }}</div>
 </form>
 {% endblock %}

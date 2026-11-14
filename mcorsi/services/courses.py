@@ -90,6 +90,7 @@ def create_course(*, actor: User, data: dict) -> Course:
         delivery_mode=data["delivery_mode"],
         meeting_url=data.get("meeting_url", "").strip(),
         certificate_validity_months=data.get("certificate_validity_months"),
+        self_enrollment_enabled=bool(data.get("self_enrollment_enabled", False)),
         timezone_name="Europe/Rome",
     )
     set_single_session(course, data["session_date"], data["start_time"], data["end_time"])
@@ -105,8 +106,17 @@ def create_course(*, actor: User, data: dict) -> Course:
     return course
 
 
+def _course_audit_state(course: Course) -> dict:
+    return {
+        "title": course.title,
+        "status": course.status,
+        "referent": course.referent_user_id,
+        "self_enrollment_enabled": bool(course.self_enrollment_enabled),
+    }
+
+
 def update_course(course: Course, *, actor: User, data: dict) -> Course:
-    before = {"title": course.title, "status": course.status, "referent": course.referent_user_id}
+    before = _course_audit_state(course)
     course.title = data["title"].strip()
     course.description = data.get("description", "").strip()
     course.legal_references = data.get("legal_references", "").strip()
@@ -117,13 +127,14 @@ def update_course(course: Course, *, actor: User, data: dict) -> Course:
     course.delivery_mode = data["delivery_mode"]
     course.meeting_url = data.get("meeting_url", "").strip()
     course.certificate_validity_months = data.get("certificate_validity_months")
+    course.self_enrollment_enabled = bool(data.get("self_enrollment_enabled", False))
     set_single_session(course, data["session_date"], data["start_time"], data["end_time"])
     record_event(
         "course.updated",
         actor=actor,
         target_type="course",
         target_id=course.id,
-        detail={"before": before, "after": {"title": course.title, "status": course.status, "referent": course.referent_user_id}},
+        detail={"before": before, "after": _course_audit_state(course)},
     )
     return course
 

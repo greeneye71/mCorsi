@@ -420,3 +420,42 @@ def test_participant_edit_ignores_external_next(app, client, target):
     )
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/participants")
+
+
+def test_course_form_saves_self_enrollment_flag(app, client):
+    admin_id = _make_user(app, "admin@example.it", "admin")
+    _login(client, "admin@example.it")
+    response = client.post(
+        "/courses/new", data=_course_payload(admin_id) | {"self_enrollment_enabled": "y"}
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        course = Course.query.one()
+        course_id = course.id
+        assert course.self_enrollment_enabled is True
+
+    response = client.post(f"/courses/{course_id}/edit", data=_course_payload(admin_id))
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(Course, course_id).self_enrollment_enabled is False
+        event = (
+            AuditLog.query.filter_by(event_type="course.updated")
+            .order_by(AuditLog.created_at.desc())
+            .first()
+        )
+        assert event.detail["before"]["self_enrollment_enabled"] is True
+        assert event.detail["after"]["self_enrollment_enabled"] is False
+
+
+def test_course_detail_shows_self_enrollment_state(app, client):
+    admin_id = _make_user(app, "admin@example.it", "admin")
+    _login(client, "admin@example.it")
+    course_id = _new_course(app, client, admin_id)
+    page = client.get(f"/courses/{course_id}").get_data(as_text=True)
+    assert "Iscrizione diretta con codice: non attiva" in page
+
+    with app.app_context():
+        db.session.get(Course, course_id).self_enrollment_enabled = True
+        db.session.commit()
+    page = client.get(f"/courses/{course_id}").get_data(as_text=True)
+    assert "Iscrizione diretta con codice: attiva" in page

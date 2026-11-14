@@ -4,6 +4,7 @@ from datetime import date, time
 
 from flask_wtf import FlaskForm
 from wtforms import (
+    BooleanField,
     HiddenField,
     DateField,
     EmailField,
@@ -52,6 +53,7 @@ class CourseForm(FlaskForm):
         "Validità attestato in mesi",
         validators=[Optional(), NumberRange(min=1, max=600)],
     )
+    self_enrollment_enabled = BooleanField("Iscrizione diretta con codice", default=False)
     submit = SubmitField("Salva corso")
 
     def validate_end_time(self, field):

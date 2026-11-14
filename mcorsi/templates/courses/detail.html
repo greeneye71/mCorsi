@@ -29,7 +29,7 @@
       {% if course.meeting_url %}<div><dt>Videoconferenza</dt><dd><a href="{{ course.meeting_url }}" target="_blank" rel="noopener">Apri collegamento</a></dd></div>{% endif %}
     </dl>
   </article>
-  <aside class="panel panel-tint"><p class="eyebrow">Codice di ammissione</p><div class="course-code">{{ course.code }}</div><p>Il partecipante può usare questo codice nella propria area per chiedere l'accesso.</p></aside>
+  <aside class="panel panel-tint"><p class="eyebrow">Codice di ammissione</p><div class="course-code">{{ course.code }}</div><p>Iscrizione diretta con codice: {{ "attiva" if course.self_enrollment_enabled else "non attiva" }}</p><p>Il partecipante può usare questo codice nella propria area {{ "per iscriversi subito" if course.self_enrollment_enabled else "per chiedere l'accesso" }}.</p></aside>
 </section>
 
 <section class="panel spaced-panel">
