@@ -120,3 +120,22 @@ def test_concurrent_first_failure_does_not_crash(app, monkeypatch):
         assert len(rows) == 2
         assert all(row.failures == 2 for row in rows)
         assert all(row.blocked_until is not None for row in rows)
+
+
+def test_empty_ip_does_not_share_bucket(app):
+    with app.app_context():
+        first = _participant()
+        second = _participant("altra@example.it")
+        _fail(first, ip="", times=3)
+        check_course_code_allowed(second.id, "", now=T0)
+        assert CourseCodeFailure.query.filter_by(scope="ip").count() == 0
+
+
+def test_failure_purges_expired_rows(app):
+    with app.app_context():
+        stale = _participant()
+        fresh = _participant("altra@example.it")
+        _fail(stale, ip="10.0.0.1")
+        _fail(fresh, ip="10.0.0.2", now=T0 + timedelta(hours=2))
+        subjects = {row.subject for row in CourseCodeFailure.query.all()}
+        assert subjects == {fresh.id, "10.0.0.2"}

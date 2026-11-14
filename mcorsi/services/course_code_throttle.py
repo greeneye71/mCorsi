@@ -29,7 +29,11 @@ def delay_for_failures(failures: int) -> int:
 
 
 def _subjects(user_id: str, ip: str) -> list[tuple[str, str]]:
-    return [("user", user_id), ("ip", ip)]
+    # Senza IP noto non si conta per IP: un bucket "" condiviso bloccherebbe tutti.
+    subjects = [("user", user_id)]
+    if ip:
+        subjects.append(("ip", ip))
+    return subjects
 
 
 def _live_row(scope: str, subject: str, now: datetime) -> CourseCodeFailure | None:
@@ -78,6 +82,9 @@ def _increment(scope: str, subject: str, now: datetime) -> int:
 
 def record_course_code_failure(user: User, ip: str, *, now: datetime | None = None) -> int:
     now = now or utc_now()
+    CourseCodeFailure.query.filter(
+        CourseCodeFailure.last_failure_at < now - FAILURE_WINDOW
+    ).delete(synchronize_session=False)
     counts = [_increment(scope, subject, now) for scope, subject in _subjects(user.id, ip)]
     failures = max(counts)
     record_event(
