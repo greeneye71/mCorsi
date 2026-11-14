@@ -129,6 +129,8 @@ def _new_company_valid(form: ParticipantProfileForm) -> bool:
 
 
 def _apply_profile_form(form: ParticipantProfileForm) -> bool:
+    # Tutte le validazioni precedono la prima scrittura: se si ritorna False
+    # la sessione resta pulita e non serve alcun rollback.
     company = None
     vat_number = normalize_vat_number(form.vat_number.data or "")
     if vat_number:

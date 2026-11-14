@@ -308,3 +308,26 @@ def test_dashboard_pending_request_hides_highlight(app, client):
     page = client.get("/participant").get_data(as_text=True)
     assert "join-panel-highlight" not in page
     assert "Partecipa a un corso" in page
+
+
+def test_confirm_incomplete_new_company_writes_nothing(app, client):
+    course_id, code = _course(app)
+    _request_and_verify(app, client)
+    client.post("/participant/admissions", data={"code": code})
+    with app.app_context():
+        audit_before = AuditLog.query.count()
+
+    payload = _profile_payload(vat_number="01234567897", include_company=True)
+    payload["company_address"] = ""
+    response = client.post("/participant/enroll/confirm", data=payload)
+
+    assert response.status_code == 200
+    assert "Indica l&#39;indirizzo.".encode() in response.data
+    assert _pending_key(client) == course_id
+    with app.app_context():
+        assert Company.query.count() == 0
+        assert AuditLog.query.count() == audit_before
+        user = User.query.filter_by(email="persona@example.it").one()
+        assert not user.profile_completed
+        assert user.participant_profile is None
+        assert Enrollment.query.count() == 0
