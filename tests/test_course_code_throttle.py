@@ -102,3 +102,21 @@ def test_failure_audit_never_contains_code(app):
         entry = AuditLog.query.filter_by(event_type="course_code.failed").one()
         assert entry.actor_user_id == user.id
         assert entry.detail == {"ip": "10.0.0.1", "failures": 1}
+
+
+def test_concurrent_first_failure_does_not_crash(app, monkeypatch):
+    """Un'altra richiesta inserisce la riga tra la lettura e l'insert."""
+    from mcorsi.services import course_code_throttle as throttle
+
+    with app.app_context():
+        user = _participant()
+        _fail(user)  # righe user/ip già presenti (failures=1)
+        monkeypatch.setattr(throttle, "_live_row", lambda scope, subject, now: None)
+
+        failures = _fail(user)
+
+        assert failures == 2
+        rows = CourseCodeFailure.query.all()
+        assert len(rows) == 2
+        assert all(row.failures == 2 for row in rows)
+        assert all(row.blocked_until is not None for row in rows)
