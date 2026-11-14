@@ -6,7 +6,7 @@ import sqlite3
 from pathlib import Path
 from uuid import uuid4
 
-from flask_migrate import upgrade
+from flask_migrate import downgrade, upgrade
 
 from mcorsi import create_app
 
@@ -176,5 +176,29 @@ def test_self_enrollment_migration_defaults_false():
             if index[2]
         ]
         assert ["scope", "subject"] in unique_columns
+    finally:
+        connection.close()
+
+
+def test_self_enrollment_downgrade_resumes_after_partial_failure():
+    database_path = _database_path()
+    app = _app(database_path)
+    _migrate(app, "head")
+    connection = sqlite3.connect(database_path)
+    connection.execute("DROP TABLE course_code_failures")
+    connection.commit()
+    connection.close()
+
+    with app.app_context():
+        downgrade(directory=MIGRATIONS_DIR, revision="f3b9c1d7e5a2")
+
+    connection = sqlite3.connect(database_path)
+    try:
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(courses)")]
+        assert "self_enrollment_enabled" not in columns
+        (version,) = connection.execute(
+            "SELECT database_version FROM system_version WHERE id = 1"
+        ).fetchone()
+        assert version == 7
     finally:
         connection.close()

@@ -66,9 +66,14 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_table("course_code_failures")
-    with op.batch_alter_table("courses") as batch_op:
-        batch_op.drop_column("self_enrollment_enabled")
+    inspector = sa.inspect(op.get_bind())
+    tables = set(inspector.get_table_names())
+    if "course_code_failures" in tables:
+        op.drop_table("course_code_failures")
+    columns = {column["name"] for column in inspector.get_columns("courses")}
+    if "self_enrollment_enabled" in columns:
+        with op.batch_alter_table("courses") as batch_op:
+            batch_op.drop_column("self_enrollment_enabled")
     op.execute(
         sa.text(
             "UPDATE system_version SET application_version = '0.6.0', "
